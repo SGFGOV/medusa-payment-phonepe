@@ -92,7 +92,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         mode
       );
       const data = paymentStatusResponse.data as PaymentCheckStatusResponse;
-      switch (paymentStatusResponse.data.status) {
+      switch (data.code) {
         case "PAYMENT_PENDING":
           return PaymentSessionStatus.PENDING;
         case "BAD_REQUEST":
@@ -203,9 +203,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   ): Promise<
     | PaymentProcessorError
     | {
-      status: PaymentSessionStatus;
-      data: PaymentProcessorSessionResponse["session_data"];
-    }
+        status: PaymentSessionStatus;
+        data: PaymentProcessorSessionResponse["session_data"];
+      }
   > {
     try {
       const response = await this.phonepe_.postPaymentRequestToPhonePe(
@@ -403,8 +403,8 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       detail: isPaymentProcessorError(e)
         ? `${e.error}${EOL}${e.detail ?? ""}`
         : "detail" in e
-          ? e.detail
-          : e.message ?? "",
+        ? e.detail
+        : e.message ?? "",
     };
   }
 }

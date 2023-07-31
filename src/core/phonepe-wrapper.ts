@@ -119,7 +119,7 @@ export class PhonePeWrapper {
     vpa: string,
     mode?: "test" | "production",
     apiNewEndpoint?: string
-  ) {
+  ): Promise<any> {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v1/vpa/validate";
     let url: string;
     if (mode != "production") {
@@ -151,7 +151,7 @@ export class PhonePeWrapper {
     merchantTransactionId: string,
     mode?: "test" | "production",
     apiNewEndpoint?: string
-  ) {
+  ): Promise<any> {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v3/transaction";
     let url: string;
     if (mode != "production") {
@@ -180,7 +180,10 @@ export class PhonePeWrapper {
   async cancel(p: PaymentSessionData): Promise<PaymentSessionData> {
     return p;
   }
-  async capture(p: PaymentSessionData, mode: "production" | "test") {
+  async capture(
+    p: PaymentSessionData,
+    mode: "production" | "test"
+  ): Promise<any> {
     let isCaptured = false;
     const request = p.request as PaymentRequest;
     while (!isCaptured) {
@@ -189,7 +192,7 @@ export class PhonePeWrapper {
         request.merchantTransactionId,
         mode
       );
-      const capturedData = result.data as PaymentResponse;
+      const capturedData = result.data as PaymentCheckStatusResponse;
       isCaptured = capturedData.code != PaymentStatusCodeValues.PAYMENT_PENDING;
     }
   }
@@ -197,7 +200,7 @@ export class PhonePeWrapper {
     payload: RefundRequest,
     mode?: "test" | "production",
     apiNewEndpoint?: string
-  ) {
+  ): Promise<any> {
     const apiEndpoint = apiNewEndpoint ?? "/v4/credit/backToSource";
     let url: string;
     if (mode != "production") {
@@ -220,7 +223,7 @@ export class PhonePeWrapper {
     );
     return result;
   }
-  validateWebhook(data: any, signature: any, webhook_secret: string) {
+  validateWebhook(data: any, signature: any, webhook_secret: string): boolean {
     const { checksum } = createPostCheckSumHeader(data, webhook_secret, "");
 
     if (checksum == signature) {

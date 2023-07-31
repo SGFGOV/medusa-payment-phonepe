@@ -1,6 +1,6 @@
 {
   "name": "medusa-payment-phonepe",
-  "version": "6.0.2",
+  "version": "1.0.0",
   "description": "PhonePe Payment provider for Meduas Commerce",
   "main": "dist/index.js",
   "repository": {
