@@ -37,7 +37,6 @@ import { createPostCheckSumHeader } from "../../api/utils/utils";
 let config: PhonePeOptions = {
   salt: "test",
   merchant_id: "test",
-  webhook_secret: "test",
   redirectUrl: "http://localhost:8000",
   callbackUrl: "http://localhost:9000",
   mode: "test",
@@ -49,7 +48,6 @@ const container = {};
 config = {
   ...config,
   salt: process.env.PHONEPE_SALT!,
-  webhook_secret: process.env.PHONEPE_WEBHOOK_SECRET!,
   merchant_id: process.env.PHONEPE_MERCHANT_ACCOUNT!,
   mode: process.env.PHONEPE_MODE as any,
 };

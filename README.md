@@ -40,9 +40,9 @@ npm install medusa-payment-phonepe
 Register for a phonepe account and generate the api keys
 In your environment file (.env) you need to define 
 ```
-PHONEPE_ID=<your api key>
-PHONEPE_SECRET=<your api key secret>
-PHONEPE_ACCOUNT=<your phonepe account number/merchant id>
+PHONEPE_SALT=<your supplied SALT>
+PHONEPE_MODE=<the mode to run your stack in production,uat,test>
+PHONEPE_MERCHANT_ACCOUNT=<your phonepe account number/merchant id>
 ```
 You need to add the plugin into your medusa-config.js as shown below
 
@@ -53,11 +53,14 @@ const plugins = [
     resolve:`medusa-payment-phonepe`,
     options:{
 
-  salt: process.env.PHONEPE_SALT!,
-  webhook_secret: process.env.PHONEPE_WEBHOOK_SECRET!,
-  merchant_id: process.env.PHONEPE_MERCHANT_ACCOUNT!,
-  paymentCallbackUrl: "https://localhost:9000",
-  callbackUrl: "https://localhost:8000",
+   options: {
+                redirectUrl: "http://localhost:8000",
+                callbackUrl: "http://localhost:9000",
+                salt: configuredEnvirornment.env.PHONEPE_SALT,
+                merchant_id:
+                    configuredEnvirornment.env.PHONEPE_MERCHANT_ACCOUNT,
+                mode: configuredEnvirornment.env.PHONEPE_MODE
+            }
     }
   },
   ...]

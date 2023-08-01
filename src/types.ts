@@ -4,7 +4,7 @@ export interface PhonePeOptions {
   callbackUrl: string;
   merchant_id: string;
   salt: string;
-  webhook_secret: string;
+
   /**
    * Use this flag to capture payment immediately (default is false)
    */
