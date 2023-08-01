@@ -105,7 +105,7 @@ export class PhonePeWrapper {
           if (
             paymentRequest.merchantUserId.length > 0 &&
             paymentRequest.merchantUserId.length < 36 &&
-            paymentRequest.merchantUserId.match(/[^\w]|_/) == null
+            paymentRequest.merchantUserId.match(/[^\w]|^_/) == null
           ) {
             if (paymentRequest.redirectUrl.includes("http")) {
               if (paymentRequest.redirectMode) {
@@ -219,6 +219,7 @@ export class PhonePeWrapper {
     return result.data;
   }
   async cancel(p: PaymentSessionData): Promise<PaymentSessionData> {
+    p.code = undefined;
     return p;
   }
   async capture(p: PaymentResponseData): Promise<PaymentCheckStatusResponse> {

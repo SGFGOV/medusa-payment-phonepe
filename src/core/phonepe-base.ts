@@ -138,7 +138,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
 
     const request = await this.phonepe_.createPhonePeStandardRequest(
       amount.toString(),
-      paymentSessionData.merchantTransactionId as string,
+      (paymentSessionData.merchantTransactionId as string) ?? resource_id,
       customer?.id ?? email,
       customer?.phone
     );
