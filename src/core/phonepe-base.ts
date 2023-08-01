@@ -16,6 +16,7 @@ Step 6. Refund
 import { EOL } from "os";
 import {
   AbstractPaymentProcessor,
+  Customer,
   isPaymentProcessorError,
   PaymentProcessorContext,
   PaymentProcessorError,
@@ -29,11 +30,14 @@ import {
   PaymentCheckStatusResponseUPIData,
   PaymentIntentOptions,
   PaymentRequest,
+  PaymentResponse,
+  PaymentResponseData,
   PhonePeOptions,
   RefundRequest,
 } from "../types";
 import { MedusaError } from "@medusajs/utils";
 import { PhonePeWrapper } from "./phonepe-wrapper";
+import { buildError } from "../api/utils/utils";
 
 abstract class PhonePeBase extends AbstractPaymentProcessor {
   static identifier = "";
@@ -56,6 +60,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         salt: this.options_.salt,
         merchantId: this.options_.merchant_id,
         callbackUrl: this.options_.callbackUrl ?? "http://localhost:9000",
+        redirectMode: "POST",
+        redirectUrl: "",
+        mode: this.options_.mode,
       });
   }
 
@@ -80,19 +87,21 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
     return options;
   }
 
-  async getPaymentStatus(
-    paymentSessionData: Record<string, unknown>
-  ): Promise<PaymentSessionStatus> {
-    const id = paymentSessionData.id as string;
-    const mode = process.env.NODE_ENV == "production" ? "production" : "test";
+  async getPaymentStatus({
+    merchantId,
+    merchantTransactionId,
+  }: {
+    merchantId: string;
+    merchantTransactionId: string;
+  }): Promise<PaymentSessionStatus> {
     try {
-      const paymentStatusResponse = await this.phonepe_.getPhonePeStatus(
-        paymentSessionData.merchantId as string,
-        paymentSessionData.merchantTransactionId as string,
-        mode
-      );
-      const data = paymentStatusResponse.data as PaymentCheckStatusResponse;
-      switch (data.code) {
+      const paymentStatusResponse =
+        (await this.phonepe_.getPhonePeTransactionStatus(
+          merchantId,
+          merchantTransactionId
+        )) as PaymentCheckStatusResponse;
+      // const data = paymentStatusResponse as PaymentCheckStatusResponse;
+      switch (paymentStatusResponse.code) {
         case "PAYMENT_PENDING":
           return PaymentSessionStatus.PENDING;
         case "BAD_REQUEST":
@@ -106,7 +115,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         default:
           return PaymentSessionStatus.PENDING;
       }
-    } catch {
+    } catch (e) {
+      console.log(JSON.stringify(e));
+      const error: PaymentProcessorError = this.buildError("PHONPE_ERROR", e);
       return PaymentSessionStatus.ERROR;
     }
   }
@@ -125,76 +136,38 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       paymentSessionData,
     } = context;
 
-    const request = await this.phonepe_.createPhonePeRequest(
+    const request = await this.phonepe_.createPhonePeStandardRequest(
       amount.toString(),
-      paymentSessionData.id as string,
+      paymentSessionData.merchantTransactionId as string,
       customer?.id ?? email,
       customer?.phone
     );
-
-    const result: PaymentProcessorSessionResponse = {
-      session_data: {
-        request: request,
-      },
-    };
-
-    return result;
-    /* const description = (cart_context.payment_description ??
-      this.options_?.payment_description) as string;
-
-    const intentRequest: PhonePe = {
-      description,
-      amount: Math.round(amount),
-      currency: currency_code,
-      metadata: { resource_id },
-      capture_method: this.options_.capture ? "automatic" : "manual",
-      ...intentRequestData,
-    };
-
-    if (this.options_?.automatic_payment_methods) {
-      intentRequest.automatic_payment_methods = { enabled: true };
-    }
-
-    if (customer?.metadata?.phonepe_id) {
-      intentRequest.customer = customer.metadata.phonepe_id as string;
-    } else {
-      let phonepeCustomer;
-      try {
-        phonepeCustomer = await this.phonepe_.customers.create({
-          email,
-        });
-      } catch (e) {
-        return this.buildError(
-          "An error occurred in initiatePayment when creating a PhonePe customer",
-          e
-        );
-      }
-
-      intentRequest.customer = phonepeCustomer.id;
-    }
-
-    let session_data;
     try {
-      session_data = (await this.phonepe_.paymentIntents.create(
-        intentRequest
-      )) as unknown as Record<string, unknown>;
-    } catch (e) {
-      return this.buildError(
-        "An error occurred in InitiatePayment during the creation of the phonepe payment intent",
-        e
+      const response = await this.phonepe_.postPaymentRequestToPhonePe(
+        request as PaymentRequest
       );
-    }
 
-    return {
-      session_data,
-      update_requests: customer?.metadata?.phonepe_id
-        ? undefined
-        : {
-            customer_metadata: {
-              phonepe_id: intentRequest.customer,
-            },
+      const result: PaymentProcessorSessionResponse = {
+        session_data: {
+          ...response,
+          customer,
+        },
+        update_requests: {
+          customer_metadata: {
+            phonepe_id: customer?.id,
           },
-    };*/
+        },
+      };
+
+      return result;
+    } catch (error) {
+      const e = error as Error;
+      return {
+        error: e.message,
+        code: e.name,
+        detail: JSON.stringify(e),
+      } as PaymentProcessorError;
+    }
   }
 
   async authorizePayment(
@@ -208,12 +181,14 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       }
   > {
     try {
-      const response = await this.phonepe_.postPaymentRequestToPhonePe(
-        paymentSessionData.request as PaymentRequest,
-        process.env.PHONE_PAY_MODE == "production" ? "production" : "test"
-      );
-      paymentSessionData.phonePeResponse = response.data;
-      const status = await this.getPaymentStatus(paymentSessionData);
+      const { merchantId, merchantTransactionId } = paymentSessionData.data as {
+        merchantId;
+        merchantTransactionId;
+      };
+      const status = await this.getPaymentStatus({
+        merchantId,
+        merchantTransactionId,
+      });
       return { data: paymentSessionData, status };
     } catch (e) {
       const error: PaymentProcessorError = {
@@ -233,12 +208,12 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       return (await this.phonepe_.cancel(
         paymentSessionData
       )) as unknown as PaymentProcessorSessionResponse["session_data"];
-    } catch (error) {
-      if (error.payment_intent?.status === ErrorIntentStatus.CANCELED) {
-        return error.payment_intent;
+    } catch (e) {
+      if (e.payment_intent?.status === ErrorIntentStatus.CANCELED) {
+        return e.payment_intent;
       }
 
-      return this.buildError("An error occurred in cancelPayment", error);
+      return this.buildError("An error occurred in cancelPayment", e);
     }
   }
 
@@ -247,10 +222,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   ): Promise<
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
-    const id = paymentSessionData.id as string;
     try {
-      const mode = process.env.NODE_ENV == "production" ? "production" : "test";
-      const intent = await this.phonepe_.capture(paymentSessionData, mode);
+      const intent = await this.phonepe_.capture(
+        paymentSessionData.data as PaymentResponseData
+      );
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (error) {
       if (error.code === ErrorCodes.PAYMENT_INTENT_UNEXPECTED_STATE) {
@@ -277,19 +252,23 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   ): Promise<
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
-    const id = paymentSessionData.id as string;
-    const pastSession = paymentSessionData.request as PaymentRequest;
+    const pastSession =
+      paymentSessionData.data as unknown as PaymentResponseData;
     const refundRequest: RefundRequest = {
       merchantId: pastSession.merchantId,
-      merchantUserId: pastSession.merchantUserId,
+
       originalTransactionId: pastSession.merchantTransactionId,
-      merchantTransactionId: paymentSessionData.id as string,
+
       amount: refundAmount,
-      callbackUrl: this.options_.paymentCallbackUrl ?? "http://localhost:9000",
+
+      merchantTransactionId:
+        (paymentSessionData.data as any).merchantTransactionId + "1",
+      callbackUrl: `${this.options_.callbackUrl}/hooks/refund`,
+      merchantUserId: (paymentSessionData as any).customer.id,
     };
 
     try {
-      await this.phonepe_.postRefundRequestToPhonePe(refundRequest);
+      return await this.phonepe_.postRefundRequestToPhonePe(refundRequest);
     } catch (e) {
       return this.buildError("An error occurred in refundPayment", e);
     }
@@ -303,13 +282,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
     PaymentProcessorError | PaymentProcessorSessionResponse["session_data"]
   > {
     try {
-      const mode = process.env.NODE_ENV == "production" ? "production" : "test";
-      const id = paymentSessionData.id as string;
-      const request = paymentSessionData.request as PaymentRequest;
-      const intent = await this.phonepe_.getPhonePeStatus(
-        this.options_.merchant_id,
-        request.merchantTransactionId,
-        mode
+      const request = paymentSessionData.data as PaymentResponseData;
+      const intent = await this.phonepe_.getPhonePeTransactionStatus(
+        request.merchantId,
+        request.merchantTransactionId
       );
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (e) {
@@ -320,62 +296,44 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   async updatePayment(
     context: PaymentProcessorContext
   ): Promise<PaymentProcessorError | PaymentProcessorSessionResponse | void> {
-    const { amount, customer, paymentSessionData } = context;
-    const phonepeId = customer?.metadata?.phonepe_id;
-
-    if (phonepeId !== paymentSessionData.customer) {
-      const result = await this.initiatePayment(context);
-      if (isPaymentProcessorError(result)) {
-        return this.buildError(
-          "An error occurred in updatePayment during the initiate of the new payment for the new customer",
-          result
-        );
-      }
-
-      return result;
-    } else {
-      if (amount && paymentSessionData.amount === Math.round(amount)) {
-        return;
-      }
-
-      try {
-        const id = paymentSessionData.id as string;
-        const updateRequest = await this.phonepe_.createPhonePeRequest(
-          amount.toString(),
-          paymentSessionData.id as string,
-          customer?.id,
-          customer?.phone
-        );
-        paymentSessionData.request = updateRequest;
-        const sessionData = {
-          request: updateRequest,
-        } as unknown as PaymentProcessorSessionResponse["session_data"];
-
-        return { session_data: sessionData };
-      } catch (e) {
-        return this.buildError("An error occurred in updatePayment", e);
-      }
+    /** phonepe doesn't allow you to update an ongoing payment, you need to initiate new one */
+    /* if (phonepeId !== (paymentSessionData.customer as Customer).id) {*/
+    const result = await this.initiatePayment(context);
+    if (isPaymentProcessorError(result)) {
+      return this.buildError(
+        "An error occurred in updatePayment during the initiate of the new payment for the new customer",
+        result
+      );
+      //      }
     }
+    return result;
   }
 
   async updatePaymentData(
     sessionId: string,
     data: Record<string, unknown>
   ): Promise<any> {
-    try {
-      // Prevent from updating the amount from here as it should go through
-      // the updatePayment method to perform the correct logic
-      if (data.amount) {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          "Cannot update amount, use updatePayment instead"
-        );
-      }
-
-      return data as unknown as PaymentProcessorSessionResponse["session_data"];
-    } catch (e) {
-      return this.buildError("An error occurred in updatePaymentData", e);
+    if (data.amount) {
+      return await this.initiatePayment(
+        data as unknown as PaymentProcessorContext
+      );
+    } else {
+      return this.buildError(
+        "unsupported by PhonePe",
+        new Error("unable to update payment data")
+      );
     }
+
+    // Prevent from updating the amount from here as it should go through
+    // the updatePayment method to perform the correct logic
+    /* if (data.amount) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Cannot update amount, use updatePayment instead"
+      );
+
+      return this.buildError("An error occurred in updatePaymentData", e);
+    }*/
   }
 
   /**
@@ -383,14 +341,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
    * @param {object} data - the data of the webhook request: req.body
    * @param {object} signature - the PhonePe signature on the event, that
    *    ensures integrity of the webhook event
-   * @return {object} PhonePe Webhook event
+   * @return {Boolean} PhonePe Webhook event
    */
   constructWebhookEvent(data, signature): boolean {
-    return this.phonepe_.validateWebhook(
-      data,
-      signature,
-      this.options_.webhook_secret
-    );
+    return this.phonepe_.validateWebhook(data, signature, this.options_.salt);
   }
 
   protected buildError(

@@ -1,30 +1,44 @@
-export const PaymentIntentDataByStatus = {
-  REQUIRES_PAYMENT_METHOD: {
-    id: "requires_payment_method",
-    status: "requires_payment_method",
-  },
-  REQUIRES_CONFIRMATION: {
-    id: "requires_confirmation",
-    status: "requires_confirmation",
-  },
-  PROCESSING: {
-    id: "processing",
-    status: "processing",
-  },
-  REQUIRES_ACTION: {
-    id: "requires_action",
-    status: "requires_action",
-  },
-  CANCELED: {
-    id: "canceled",
-    status: "canceled",
-  },
-  REQUIRES_CAPTURE: {
-    id: "requires_capture",
-    status: "requires_capture",
-  },
-  SUCCEEDED: {
-    id: "succeeded",
-    status: "succeeded",
-  },
+/* case "PAYMENT_PENDING":
+  return PaymentSessionStatus.PENDING;
+case "BAD_REQUEST":
+case "INTERNAL_SERVER_ERROR":
+case "AUTHORIZATION_FAILED":
+  return PaymentSessionStatus.ERROR;
+case "TRANSACTION_NOT_FOUND":
+  return PaymentSessionStatus.CANCELED;
+case "PAYMENT_SUCCESS":
+  return PaymentSessionStatus.AUTHORIZED;
+default:
+  return PaymentSessionStatus.PENDING;
 }
+} catch {
+return PaymentSessionStatus.ERROR;
+}
+*/
+
+export const PaymentIntentDataByStatus = {
+  PAYMENT_PENDING: {
+    id: "PAYMENT_PENDING",
+    status: "PAYMENT_PENDING",
+  },
+  BAD_REQUEST: {
+    id: "BAD_REQUEST",
+    status: "ERROR",
+  },
+  INTERNAL_SERVER_ERROR: {
+    id: "INTERNAL_SERVER_ERROR",
+    status: "ERROR",
+  },
+  AUTHORIZATION_FAILED: {
+    id: "AUTHORIZATION_FAILED",
+    status: "ERROR",
+  },
+  TRANSACTION_NOT_FOUND: {
+    id: "TRANSACTION_NOT_FOUND",
+    status: "CANCELLED",
+  },
+  PAYMENT_SUCCESS: {
+    id: "PAYMENT_SUCCESS",
+    status: "AUTHORIZED",
+  },
+};

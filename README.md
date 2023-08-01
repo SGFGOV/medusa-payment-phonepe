@@ -52,13 +52,12 @@ const plugins = [
   {
     resolve:`medusa-payment-phonepe`,
     options:{
-         key_id: process.env.PHONEPE_ID,
-                key_secret: process.env.PHONEPE_SECRET,
-                phonepe_account: process.env.PHONEPE_ACCOUNT,                
-                automatic_expiry_period: 30, /*any value between 12minuts and 30 days expressed in minutes*/
-                manual_expiry_period: 20,
-                refund_speed: "normal", 
-                webhook_secret: process.env.PHONEPE_SECRET,
+
+  salt: process.env.PHONEPE_SALT!,
+  webhook_secret: process.env.PHONEPE_WEBHOOK_SECRET!,
+  merchant_id: process.env.PHONEPE_MERCHANT_ACCOUNT!,
+  paymentCallbackUrl: "https://localhost:9000",
+  callbackUrl: "https://localhost:8000",
     }
   },
   ...]

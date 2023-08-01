@@ -1,5 +1,6 @@
 export interface PhonePeOptions {
-  paymentCallbackUrl: string;
+  mode: "production" | "test" | "uat";
+  redirectUrl: string;
   callbackUrl: string;
   merchant_id: string;
   salt: string;
@@ -26,6 +27,7 @@ export interface PaymentIntentOptions {
 
 export const ErrorCodes = {
   PAYMENT_INTENT_UNEXPECTED_STATE: "payment_intent_unexpected_state",
+  UNSUPPORTED_OPERATION: "unsupported_operation",
 };
 
 export const ErrorIntentStatus = {
@@ -53,6 +55,8 @@ export interface PaymentRequestUPI {
   merchantId: string;
   merchantTransactionId: string;
   merchantUserId: string;
+  redirectUrl: string;
+  redirectMode: string;
   amount: number;
   callbackUrl: string;
   mobileNumber?: string;
@@ -70,6 +74,7 @@ export interface PaymentResponseData {
   merchantId: string;
   merchantTransactionId: string;
   instrumentResponse: InstrumentResponse;
+  customer: { id: string };
 }
 
 export interface InstrumentResponse {
@@ -90,6 +95,8 @@ export interface PaymentRequestUPICollect {
   merchantId: string;
   merchantTransactionId: string;
   merchantUserId: string;
+  redirectUrl: string;
+  redirectMode: string;
   amount: number;
   callbackUrl: string;
   mobileNumber: string;
@@ -122,6 +129,8 @@ export interface PaymentRequestUPIQr {
   merchantId: string;
   merchantTransactionId: string;
   merchantUserId: string;
+  redirectUrl: string;
+  redirectMode: string;
   amount: number;
   callbackUrl: string;
   mobileNumber: string;
@@ -221,7 +230,7 @@ export interface PaymentCheckStatusResponseUPI {
   success: boolean;
   code: PaymentStatusCodeValues;
   message: string;
-  data: PaymentCheckStatusResponseUPIData;
+  data?: PaymentCheckStatusResponseUPIData;
 }
 
 export interface PaymentCheckStatusResponseUPIData {
@@ -267,6 +276,7 @@ export enum PaymentStatusCodeValues {
   "TIMED_OUT" = "TIMED_OUT",
   "PAYMENT_SUCCESS" = "PAYMENT_SUCCESS",
   "PAYMENT_CANCELLED" = "PAYMENT_CANCELLED",
+  "PAYMENT_INITIATED" = "PAYMENT_INITIATED",
 }
 
 export interface PaymentCheckStatusResponseNetBanking {

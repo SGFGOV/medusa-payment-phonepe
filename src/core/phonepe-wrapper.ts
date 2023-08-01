@@ -1,6 +1,7 @@
 import axios, { Axios, AxiosResponse } from "axios";
 
 import {
+  buildError,
   createGetChecksumHeader,
   createGetChecksumTransactionHeader,
   createPostCheckSumHeader,
@@ -15,62 +16,124 @@ import {
   PaymentRequestUPICollect,
   PaymentRequestUPIQr,
   PaymentResponse,
+  PaymentResponseData,
   PaymentResponseUPI,
   PaymentStatusCodeValues,
   RefundRequest,
 } from "../types";
-import { GetPaymentsParams, PaymentSessionData } from "@medusajs/medusa";
+import {
+  GetPaymentsParams,
+  PaymentProcessorError,
+  PaymentSessionData,
+} from "@medusajs/medusa";
 import { QueryResult } from "typeorm";
 
 export interface PhonePeOptions {
+  redirectUrl: string;
+  redirectMode: "REDIRECT" | "POST";
   callbackUrl: string;
   merchantId: string;
   salt: string;
+  mode: "production" | "test" | "uat";
 }
 
 export class PhonePeWrapper {
   options: PhonePeOptions;
+  url: string;
 
   constructor(options: PhonePeOptions) {
     this.options = options;
+    switch (this.options.mode) {
+      case "production":
+        this.url = "https://api.phonepe.com/apis/hermes";
+        break;
+      case "uat":
+        this.url = "https://api-preprod.phonepe.com/apis/hermes";
+        break;
+      case "test":
+      default:
+        this.url = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+        break;
+    }
   }
 
   async postPaymentRequestToPhonePe(
     payload: PaymentRequestUPI | PaymentRequestUPICollect | PaymentRequestUPIQr,
-    mode?: "test" | "production",
+
     apiNewEndpoint?: string
-  ): Promise<AxiosResponse> {
+  ): Promise<
+    | AxiosResponse<PaymentResponse | PaymentCheckStatusResponse>
+    | PaymentProcessorError
+  > {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v1/pay";
-    let url: string;
-    if (mode != "production") {
-      url = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-    } else {
-      url = "https://api.phonepe.com/apis/hermes";
-    }
-    const encodedMessage = await createPostPaymentChecksumHeader(payload);
+    const url =
+      /* this.options.mode == "uat"
+        ? "https://api-preprod.phonepe.com/apis/pg-sandbox"
+        :*/ this.url;
+
+    const encodedMessage = createPostPaymentChecksumHeader(payload);
     const headers = {
       "Content-Type": "application/json",
       accept: "application/json",
       "X-VERIFY": encodedMessage.checksum,
     };
+    const reqUrl = `${url}${apiEndpoint}`;
     const result = await axios.post(
-      `${url}${apiEndpoint}`,
+      reqUrl,
       { request: encodedMessage.encodedBody },
       {
         headers,
       }
     );
-    return result;
+    return result.data;
   }
 
-  async createPhonePeRequest(
+  validatePaymentRequest(paymentRequest: PaymentRequest): boolean {
+    if (
+      paymentRequest.merchantId.length > 0 &&
+      paymentRequest.merchantId.length < 38
+    ) {
+      if (
+        paymentRequest.merchantTransactionId.length > 0 &&
+        paymentRequest.merchantTransactionId.length < 38
+      ) {
+        if (
+          typeof paymentRequest.amount == "number" &&
+          Number(paymentRequest.amount) === paymentRequest.amount &&
+          !isNaN(paymentRequest.amount)
+        ) {
+          if (
+            paymentRequest.merchantUserId.length > 0 &&
+            paymentRequest.merchantUserId.length < 36 &&
+            paymentRequest.merchantUserId.match(/[^\w]|_/) == null
+          ) {
+            if (paymentRequest.redirectUrl.includes("http")) {
+              if (paymentRequest.redirectMode) {
+                if (paymentRequest.callbackUrl) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  async createPhonePeStandardRequest(
     amount: string,
     merchantTransactionId: string,
-    customer_id,
+    customer_id: string,
     mobileNumber?: string
-  ): Promise<PaymentRequest> {
+  ): Promise<PaymentRequest | PaymentProcessorError> {
     const phonePeRequest: PaymentRequest = {
       merchantId: this.options.merchantId,
+      redirectMode: this.options.redirectMode,
+      redirectUrl:
+        this.options.redirectUrl?.length == 0
+          ? "https://localhost:8000"
+          : this.options.redirectUrl,
       merchantTransactionId: merchantTransactionId,
       merchantUserId: customer_id,
       amount: parseInt(amount),
@@ -80,22 +143,37 @@ export class PhonePeWrapper {
         type: "PAY_PAGE",
       },
     };
-    return phonePeRequest;
+    const paymentError: PaymentProcessorError = {
+      code: "VALIDATION_FAILED",
+      error: `${JSON.stringify(phonePeRequest)} is invalid`,
+    };
+    return this.validatePaymentRequest(phonePeRequest)
+      ? phonePeRequest
+      : paymentError;
   }
-  async getPhonePeStatus(
+  async getPhonePeTransactionStatus(
     merchantId: string,
     merchantTransactionId: string,
-    mode?: "test" | "production",
     apiNewEndpoint?: string
-  ): Promise<AxiosResponse<PaymentCheckStatusResponse>> {
-    const apiEndpoint = apiNewEndpoint ?? "/pg/v1/status";
-    let url: string;
-    if (mode != "production") {
-      url = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-    } else {
-      url = "https://api.phonepe.com/apis/hermes";
+  ): Promise<PaymentCheckStatusResponse> {
+    if (!merchantId || !merchantTransactionId) {
+      return {
+        data: {
+          success: false,
+          code: PaymentStatusCodeValues.PAYMENT_ERROR,
+          message: "merchantId or merchantTransactionId is incomplete",
+          data: undefined,
+        },
+      } as any;
     }
-    const encodedMessage = await createGetChecksumHeader(
+
+    const apiEndpoint = apiNewEndpoint ?? "/pg/v1/status";
+    const url =
+      this.options.mode == "uat"
+        ? "https://api-preprod.phonepe.com/apis/pg-sandbox"
+        : this.url;
+
+    const encodedMessage = createGetChecksumHeader(
       merchantId,
       merchantTransactionId
     );
@@ -105,28 +183,22 @@ export class PhonePeWrapper {
       "X-VERIFY": encodedMessage.checksum,
       "X-MERCHANT-ID": merchantId,
     };
-    const result = await axios.get(
-      `${url}${apiEndpoint}/${merchantId}/${merchantTransactionId}`,
-      {
-        headers,
-      }
-    );
-    return result;
+
+    const requestUrl = `${url}${apiEndpoint}/${merchantId}/${merchantTransactionId}`;
+    const result = await axios.get(requestUrl, {
+      headers,
+    });
+    return result.data;
   }
 
   async validateVpa(
     merchantId: string,
     vpa: string,
-    mode?: "test" | "production",
+
     apiNewEndpoint?: string
   ): Promise<any> {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v1/vpa/validate";
-    let url: string;
-    if (mode != "production") {
-      url = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-    } else {
-      url = "https://api.phonepe.com/apis/hermes";
-    }
+    const url = this.url;
     const encodedMessage = await createPostValidateVpaChecksumHeader({
       merchantId,
       vpa,
@@ -144,76 +216,38 @@ export class PhonePeWrapper {
         headers,
       }
     );
-    return result;
-  }
-  async getPhonePePostTransactionStatus(
-    merchantId: string,
-    merchantTransactionId: string,
-    mode?: "test" | "production",
-    apiNewEndpoint?: string
-  ): Promise<any> {
-    const apiEndpoint = apiNewEndpoint ?? "/pg/v3/transaction";
-    let url: string;
-    if (mode != "production") {
-      url = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-    } else {
-      url = "https://api.phonepe.com/apis/hermes";
-    }
-    const encodedMessage = await createGetChecksumTransactionHeader(
-      merchantId,
-      merchantTransactionId
-    );
-    const headers = {
-      "Content-Type": "application/json",
-      accept: "application/json",
-      "X-VERIFY": encodedMessage.checksum,
-      "X-MERCHANT-ID": merchantId,
-    };
-    const result = await axios.get(
-      `${url}${apiEndpoint}/${merchantId}/${merchantTransactionId}/status`,
-      {
-        headers,
-      }
-    );
-    return result;
+    return result.data;
   }
   async cancel(p: PaymentSessionData): Promise<PaymentSessionData> {
     return p;
   }
-  async capture(
-    p: PaymentSessionData,
-    mode: "production" | "test"
-  ): Promise<any> {
+  async capture(p: PaymentResponseData): Promise<PaymentCheckStatusResponse> {
     let isCaptured = false;
-    const request = p.request as PaymentRequest;
-    while (!isCaptured) {
-      const result = await this.getPhonePeStatus(
-        request.merchantId,
-        request.merchantTransactionId,
-        mode
-      );
-      const capturedData = result.data as PaymentCheckStatusResponse;
-      isCaptured = capturedData.code != PaymentStatusCodeValues.PAYMENT_PENDING;
-    }
+    const { merchantId, merchantTransactionId } = p;
+
+    const result = await this.getPhonePeTransactionStatus(
+      merchantId,
+      merchantTransactionId
+    );
+
+    isCaptured = result.code != PaymentStatusCodeValues.PAYMENT_PENDING;
+
+    return result;
   }
   async postRefundRequestToPhonePe(
     payload: RefundRequest,
-    mode?: "test" | "production",
+
     apiNewEndpoint?: string
   ): Promise<any> {
-    const apiEndpoint = apiNewEndpoint ?? "/v4/credit/backToSource";
-    let url: string;
-    if (mode != "production") {
-      url = "https://api-preprod.phonepe.com/apis/pg-sandbox";
-    } else {
-      url = "https://api.phonepe.com/apis/hermes";
-    }
+    const apiEndpoint = apiNewEndpoint ?? "/pg/v1/refund";
+    const url = this.url;
     const encodedMessage = await createPostRefundChecksumHeader(payload);
     const headers = {
       "Content-Type": "application/json",
       accept: "application/json",
       "X-VERIFY": encodedMessage.checksum,
     };
+
     const result = await axios.post(
       `${url}${apiEndpoint}`,
       { request: encodedMessage.encodedBody },
@@ -221,10 +255,10 @@ export class PhonePeWrapper {
         headers,
       }
     );
-    return result;
+    return result.data;
   }
-  validateWebhook(data: any, signature: any, webhook_secret: string): boolean {
-    const { checksum } = createPostCheckSumHeader(data, webhook_secret, "");
+  validateWebhook(data: any, signature: any, salt: string): boolean {
+    const { checksum } = createPostCheckSumHeader(data, salt, "");
 
     if (checksum == signature) {
       return true;

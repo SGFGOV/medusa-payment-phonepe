@@ -6,18 +6,25 @@ import {
   WRONG_CUSTOMER_EMAIL,
 } from "../../__mocks__/phonepe";
 import { PaymentIntentDataByStatus } from "../../__fixtures__/data";
+import { Customer, PaymentProcessorContext } from "@medusajs/medusa";
 
 // INITIATE PAYMENT DATA
 
-export const initiatePaymentContextWithExistingCustomer = {
-  email: EXISTING_CUSTOMER_EMAIL,
-  currency_code: "usd",
-  amount: 1000,
-  resource_id: "test",
-  customer: {},
-  context: {},
-  paymentSessionData: {},
-};
+export const initiatePaymentContextWithExistingCustomer: PaymentProcessorContext =
+  {
+    email: EXISTING_CUSTOMER_EMAIL,
+    currency_code: "inr",
+    amount: 1000,
+    resource_id: "test",
+    customer: { phone: "9999999999", id: "thisIsATestUser" } as any,
+    context: {},
+    paymentSessionData: {
+      merchantTransactionId: "test" + Math.round(Math.random() * 1e10),
+      redirectUrl: `https://localhost:8000/order/${
+        "test" + Math.round(Math.random() * 1e10)
+      }`,
+    },
+  };
 
 export const initiatePaymentContextWithExistingCustomerPhonePeId = {
   email: EXISTING_CUSTOMER_EMAIL,
@@ -58,13 +65,13 @@ export const initiatePaymentContextWithFailIntentCreation = {
 // AUTHORIZE PAYMENT DATA
 
 export const authorizePaymentSuccessData = {
-  id: PaymentIntentDataByStatus.SUCCEEDED.id,
+  id: PaymentIntentDataByStatus.PAYMENT_SUCCESS.id,
 };
 
 // CANCEL PAYMENT DATA
 
 export const cancelPaymentSuccessData = {
-  id: PaymentIntentDataByStatus.SUCCEEDED.id,
+  id: PaymentIntentDataByStatus.PAYMENT_SUCCESS.id,
 };
 
 export const cancelPaymentFailData = {
@@ -79,7 +86,7 @@ export const cancelPaymentPartiallyFailData = {
 
 export const capturePaymentContextSuccessData = {
   paymentSessionData: {
-    id: PaymentIntentDataByStatus.SUCCEEDED.id,
+    id: PaymentIntentDataByStatus.PAYMENT_SUCCESS.id,
   },
 };
 
@@ -98,7 +105,7 @@ export const capturePaymentContextPartiallyFailData = {
 // DELETE PAYMENT DATA
 
 export const deletePaymentSuccessData = {
-  id: PaymentIntentDataByStatus.SUCCEEDED.id,
+  id: PaymentIntentDataByStatus.PAYMENT_SUCCESS.id,
 };
 
 export const deletePaymentFailData = {
@@ -112,7 +119,7 @@ export const deletePaymentPartiallyFailData = {
 // REFUND PAYMENT DATA
 
 export const refundPaymentSuccessData = {
-  id: PaymentIntentDataByStatus.SUCCEEDED.id,
+  id: PaymentIntentDataByStatus.PAYMENT_SUCCESS.id,
 };
 
 export const refundPaymentFailData = {
@@ -122,7 +129,7 @@ export const refundPaymentFailData = {
 // RETRIEVE PAYMENT DATA
 
 export const retrievePaymentSuccessData = {
-  id: PaymentIntentDataByStatus.SUCCEEDED.id,
+  id: PaymentIntentDataByStatus.PAYMENT_SUCCESS.id,
 };
 
 export const retrievePaymentFailData = {
@@ -175,27 +182,24 @@ export const updatePaymentContextWithWrongEmail = {
 };
 
 export const updatePaymentContextWithDifferentAmount = {
-  email: WRONG_CUSTOMER_EMAIL,
+  email: EXISTING_CUSTOMER_EMAIL,
   currency_code: "usd",
-  amount: 2000,
+  amount: 300,
   resource_id: "test",
-  customer: {
-    metadata: {
-      phonepe_id: "test",
-    },
-  },
+  customer: { phone: "9999999999", id: "thisIsATestUser" } as any,
   context: {},
   paymentSessionData: {
-    id: PaymentIntentDataByStatus.SUCCEEDED.id,
-    customer: "test",
-    amount: 1000,
+    merchantTransactionId: "test" + Math.round(Math.random() * 1e10),
+    redirectUrl: `https://localhost:8000/order/${
+      "test" + Math.round(Math.random() * 1e10)
+    }`,
   },
 };
 
 export const updatePaymentContextFailWithDifferentAmount = {
   email: WRONG_CUSTOMER_EMAIL,
   currency_code: "usd",
-  amount: 2000,
+  amount: 500,
   resource_id: "test",
   customer: {
     metadata: {
@@ -216,7 +220,7 @@ export const updatePaymentContextFailWithDifferentAmount = {
 
 export const updatePaymentDataWithAmountData = {
   sessionId: PHONEPE_ID,
-  amount: 2000,
+  amount: 500,
 };
 
 export const updatePaymentDataWithoutAmountData = {
@@ -259,5 +263,22 @@ export const SamplePayloadBase64StdCheckout = {
   mobileNumber: "9999999999",
   paymentInstrument: {
     type: "PAY_PAGE",
+  },
+};
+export const responseHookData = {
+  success: true,
+  code: "PAYMENT_SUCCESS",
+  message: "Your request has been successfully completed.",
+  data: {
+    merchantId: "FKRT",
+    merchantTransactionId: "MT7850590068188104",
+    transactionId: "T2111221437456190170379",
+    amount: 100,
+    state: "COMPLETED",
+    responseCode: "SUCCESS",
+    paymentInstrument: {
+      type: "UPI",
+      utr: "206378866112",
+    },
   },
 };

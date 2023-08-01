@@ -91,9 +91,7 @@ describe("Utils", () => {
       } as any;
 
       message = buildError(event, error);
-      expect(message).toBe(
-        `PhonePe webhook ${event} handling failed${EOL}${error.detail}`
-      );
+      expect(message).toBe(`PhonePe webhook ${event} handling failed${EOL}`);
     });
   });
   /*

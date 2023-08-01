@@ -44,6 +44,7 @@ export function buildError(
   event: string,
   err: PaymentProcessorError & Error
 ): string {
+  console.log(JSON.stringify(err));
   let message = `PhonePe webhook ${event} handling failed${EOL}${
     err?.code ?? err?.message
   }`;
@@ -302,7 +303,7 @@ export function createPostRefundChecksumHeader(
   payload: RefundRequest,
   salt?: string
 ) {
-  return createPostCheckSumHeader(payload, salt, "/v4/credit/backToSource");
+  return createPostCheckSumHeader(payload, salt, "/pg/v1/refund");
 }
 
 export function createPostValidateVpaChecksumHeader(

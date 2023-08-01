@@ -14,6 +14,18 @@ export const EXISTING_CUSTOMER_EMAIL = "right@test.fr";
 export const PHONEPE_ID = "test";
 export const PARTIALLY_FAIL_INTENT_ID = "partially_unknown";
 export const FAIL_INTENT_ID = "unknown";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const mockEnabled = process.env.DISABLE_MOCKS == "true" ? false : true;
+
+export function isMocksEnabled(): boolean {
+  if (mockEnabled) {
+    console.log("using mocks");
+  }
+  return mockEnabled;
+}
 
 export const PhonePeMock = {
   paymentIntents: {
