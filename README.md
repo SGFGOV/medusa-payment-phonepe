@@ -72,7 +72,6 @@ For the nextjs start you need to  make the following changes
 
 1. Install package to your next starter. This just makes it easier, importing all the scripts implicitly
 ```
-yarn add react-phonepe
 
 ```
 2. Create a button for PhonePe <next-starter>/src/modules/checkout/components/payment-button/phonepe-payment-button.tsx
@@ -88,7 +87,7 @@ import Button from "@modules/common/components/button"
 import Spinner from "@modules/common/icons/spinner"
 import { useCart, useUpdatePaymentSession } from "medusa-react"
 import { useCallback, useEffect, useState } from "react"
-import usePhonePe, { PhonePeOptions } from "react-phonepe"
+
 
 export const PhonePePaymentButton = ({
     session,
@@ -106,86 +105,41 @@ export const PhonePePaymentButton = ({
     const { cart } = useCart()
     const { onPaymentCompleted } = useCheckout()
     
-  
-    const [PhonePe, isLoaded] = usePhonePe();
-    
     
     useEffect(() => {
-      if (!PhonePe) {
+      console.log(JSON.stringify(session))
+      if (!session && cart?.payment.provider_id == "phonepe") {
         setDisabled(true)
       } else {
         setDisabled(false)
       }
-    }, [PhonePe])
-  
+    }, [session,cart])
+
+    
     
         
     
         
   const handlePayment = useCallback(() => {
-  
-  
-    if (!PhonePe || !cart) {
+    console.log(session)
+    setSubmitting(true)
+    if ( !cart) {
+      setSubmitting(false)
       return
       }
-  
-    if(cart) {
-        const amountToBePaid  = cart.total!
-          let options:PhonePeOptions = {
-              "key": process.env.NEXT_PUBLIC_PHONEPE_KEY!,
-              "amount": amountToBePaid.toString(), // 2000 paise = INR 20, amount in paisa
-              "name": process.env.NEXT_PUBLIC_SHOP_NAME!,
-              "description": process.env.NEXT_PUBLIC_SHOP_DESCRIPTION,
-              "order_id":session.data.id as string,
-              "currency":(session.data.currency as string).toUpperCase(),
-              modal: {
-                backdropclose:true,
-                escape: true,
-                handleback: true,
-                confirm_close: true,
-                ondismiss: () => {
-                    setSubmitting(false)
-                },
-                animation: true,
-            },
-              handler:(args)=>{
-            
-                onPaymentCompleted()
-              },
-              "prefill":{
-                  "name":cart.billing_address.first_name + " "+ cart.billing_address.last_name,
-                  "email":cart.email,
-                  "contact":cart.billing_address.phone!
-              },
-              "notes": {
-                "address": cart.billing_address,
-                "order_notes":session.data.notes
-              },
-              callback_url:`${process.env.MEDUSA_BACKEND_URL}/hook/phonepe`,
-              "theme": {
-                "color":  process.env.NEXT_PUBLIC_SHOP_COLOUR ?? "00000"
-              }
-             }; 
-            let rzp = new PhonePe(options);
-            rzp.on("payment.failed", function (response:any) {
-                setErrorMessage(JSON.stringify(response.error))
-            })
-            rzp.on("payment.authorized", function (response:any) {
-               
-            })
-            rzp.on("payment.captured", function (response:any) {
-                
-             }
-            )
-            rzp.open();
+      console.log(((session.data.data as any).instrumentResponse as any).redirectInfo.url)
+      if(((session.data.data as any).instrumentResponse as any).redirectInfo.url.includes("https"))
+      window.location.replace(((session.data.data as any).instrumentResponse as any).redirectInfo.url)
+      onPaymentCompleted()
     }
-    },[PhonePe, cart, onPaymentCompleted, session.data.currency, session.data.id, session.data.notes]);
+    
+    ,[session, cart]);
 
-    useEffect(() => {
-        if (isLoaded) {
-        //  handlePayment();
+    /*useEffect(() => {
+        if (session) {
+         handlePayment();
         }
-      }, [isLoaded, handlePayment])
+      }, [session])*/
     return (
       <>
         <Button
@@ -202,7 +156,7 @@ export const PhonePePaymentButton = ({
       </>
     )
   }
-  
+    
 ````
 
 Step 3. 
@@ -218,17 +172,26 @@ phonepe: {
   },
 ````
 
-and add into the payment element
+&&
 
+```
+case "phonepe":
+        return (
+          <PhonePePaymentButton notReady={notReady} session={paymentSession} />
+        )
+        
+
+
+```
+
+
+and add into the payment element
+```
 case "phonepe":
         return <></>
+```
+ 
 
-
-Step 4. Add enviroment variables in the client
-
-  NEXT_PUBLIC_PHONEPE_KEY:<your phonepe key>
-  NEXT_PUBLIC_SHOP_NAME:<your phonepe shop name>
-  NEXT_PUBLIC_SHOP_DESCRIPTION: <your phonepeshop description>
 
 ## Contributing
 
