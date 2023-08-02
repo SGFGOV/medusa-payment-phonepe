@@ -58,7 +58,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       this.phonepe_ ||
       new PhonePeWrapper({
         salt: this.options_.salt,
-        merchantId: this.options_.merchant_id,
+        merchantId: this.options_.merchantId,
         callbackUrl: this.options_.callbackUrl ?? "http://localhost:9000",
         redirectMode: "POST",
         redirectUrl: "",

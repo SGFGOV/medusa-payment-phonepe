@@ -36,10 +36,11 @@ import { FindOptionsUtils } from "typeorm";
 import { createPostCheckSumHeader } from "../../api/utils/utils";
 let config: PhonePeOptions = {
   salt: "test",
-  merchant_id: "test",
+  merchantId: "test",
   redirectUrl: "http://localhost:8000",
   callbackUrl: "http://localhost:9000",
   mode: "test",
+  redirectMode: "POST",
 };
 if (!isMocksEnabled()) {
   dotenv.config();
@@ -48,7 +49,7 @@ const container = {};
 config = {
   ...config,
   salt: process.env.PHONEPE_SALT!,
-  merchant_id: process.env.PHONEPE_MERCHANT_ACCOUNT!,
+  merchantId: process.env.PHONEPE_MERCHANT_ACCOUNT!,
   mode: process.env.PHONEPE_MODE as any,
 };
 let testPaymentSession;
@@ -72,7 +73,7 @@ describe("PhonePeTest", () => {
     if (isMocksEnabled()) {
       it("should return the correct status", async () => {
         const statusRequest = {
-          merchantId: config.merchant_id,
+          merchantId: config.merchantId,
           merchantTransactionId: initiatePaymentContextWithExistingCustomer
             .paymentSessionData.merchantTransactionId as string,
           mode: config.mode,
@@ -105,7 +106,7 @@ describe("PhonePeTest", () => {
           },
         });
         const statusRequest = {
-          merchantId: config.merchant_id,
+          merchantId: config.merchantId,
           merchantTransactionId: initiatePaymentContextWithExistingCustomer
             .paymentSessionData.merchantTransactionId as string,
           mode: config.mode,

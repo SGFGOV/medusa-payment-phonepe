@@ -19,6 +19,7 @@ import {
   PaymentResponseData,
   PaymentResponseUPI,
   PaymentStatusCodeValues,
+  PhonePeOptions,
   RefundRequest,
 } from "../types";
 import {
@@ -27,15 +28,6 @@ import {
   PaymentSessionData,
 } from "@medusajs/medusa";
 import { QueryResult } from "typeorm";
-
-export interface PhonePeOptions {
-  redirectUrl: string;
-  redirectMode: "REDIRECT" | "POST";
-  callbackUrl: string;
-  merchantId: string;
-  salt: string;
-  mode: "production" | "test" | "uat";
-}
 
 export class PhonePeWrapper {
   options: PhonePeOptions;

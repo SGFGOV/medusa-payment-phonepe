@@ -51,17 +51,18 @@ const plugins = [
   ...,
   {
     resolve:`medusa-payment-phonepe`,
-    options:{
+  
 
    options: {
                 redirectUrl: "http://localhost:8000",
                 callbackUrl: "http://localhost:9000",
-                salt: configuredEnvirornment.env.PHONEPE_SALT,
-                merchant_id:
-                    configuredEnvirornment.env.PHONEPE_MERCHANT_ACCOUNT,
-                mode: configuredEnvirornment.env.PHONEPE_MODE
+                salt: process.env.PHONEPE_SALT,
+                merchantId:
+                    process.env.PHONEPE_MERCHANT_ACCOUNT,
+                mode: process.env.PHONEPE_MODE,
+                redirectMode: "POST"
             }
-    }
+  
   },
   ...]
 ```

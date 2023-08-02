@@ -1,9 +1,10 @@
 export interface PhonePeOptions {
-  mode: "production" | "test" | "uat";
   redirectUrl: string;
+  redirectMode: "REDIRECT" | "POST";
   callbackUrl: string;
-  merchant_id: string;
+  merchantId: string;
   salt: string;
+  mode: "production" | "test" | "uat";
 
   /**
    * Use this flag to capture payment immediately (default is false)
@@ -77,11 +78,6 @@ export interface PaymentResponseData {
   customer: { id: string };
 }
 
-export interface InstrumentResponse {
-  type: string;
-  intentUrl: string;
-}
-
 export interface DeviceContext {
   deviceOS: string;
 }
@@ -121,10 +117,6 @@ export interface PaymentResponseUPICollectData {
   instrumentResponse: InstrumentResponse;
 }
 
-export interface InstrumentResponse {
-  type: string;
-}
-
 export interface PaymentRequestUPIQr {
   merchantId: string;
   merchantTransactionId: string;
@@ -157,8 +149,9 @@ export interface PaymentResponseUPIQrData {
 
 export interface InstrumentResponse {
   type: string;
-  qrData: string;
-  intentUrl: string;
+  qrData?: string;
+  intentUrl?: string;
+  redirectInfo?: RedirectInfo;
 }
 
 export interface PaymentRequestWebFlow {
@@ -184,11 +177,6 @@ export interface PaymentResponseWebFlowData {
   merchantId: string;
   merchantTransactionId: string;
   instrumentResponse: InstrumentResponse;
-}
-
-export interface InstrumentResponse {
-  type: string;
-  redirectInfo: RedirectInfo;
 }
 
 export interface RedirectInfo {
