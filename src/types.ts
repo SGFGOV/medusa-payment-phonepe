@@ -6,6 +6,7 @@ export interface PhonePeOptions {
   salt: string;
   mode: "production" | "test" | "uat";
 
+  /** these settings are legacy considering that in future phonepe may delink payment and capture */
   /**
    * Use this flag to capture payment immediately (default is false)
    */

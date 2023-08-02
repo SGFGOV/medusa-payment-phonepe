@@ -60,8 +60,8 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         salt: this.options_.salt,
         merchantId: this.options_.merchantId,
         callbackUrl: this.options_.callbackUrl ?? "http://localhost:9000",
-        redirectMode: "POST",
-        redirectUrl: "",
+        redirectMode: this.options_.redirectMode,
+        redirectUrl: this.options_.redirectUrl,
         mode: this.options_.mode,
       });
   }
