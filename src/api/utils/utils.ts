@@ -16,6 +16,7 @@ import {
   PaymentRequestUPICollect,
   PaymentRequestUPIQr,
   RefundRequest,
+  PhonePeEvent,
 } from "../../types";
 import PhonePeProviderService from "../../services/phonepe-provider";
 
@@ -67,7 +68,7 @@ export async function handlePaymentHook({
   container,
   paymentIntent,
 }: {
-  event: { type: string; id: string };
+  event: PhonePeEvent;
   container: AwilixContainer;
   paymentIntent: {
     id: string;
