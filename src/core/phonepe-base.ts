@@ -90,15 +90,20 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   async getPaymentStatus({
     merchantId,
     merchantTransactionId,
+    data,
   }: {
     merchantId: string;
     merchantTransactionId: string;
+    data?: any;
   }): Promise<PaymentSessionStatus> {
     try {
+      const currentMerchantId = merchantId ?? data.merchantId;
+      const currentMerchantTransactionId =
+        merchantTransactionId ?? data.merchantTransactionId;
       const paymentStatusResponse =
         (await this.phonepe_.getPhonePeTransactionStatus(
-          merchantId,
-          merchantTransactionId
+          currentMerchantId,
+          currentMerchantTransactionId
         )) as PaymentCheckStatusResponse;
       // const data = paymentStatusResponse as PaymentCheckStatusResponse;
       switch (paymentStatusResponse.code) {
