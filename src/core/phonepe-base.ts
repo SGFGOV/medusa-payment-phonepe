@@ -341,10 +341,35 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
    * @param {object} data - the data of the webhook request: req.body
    * @param {object} signature - the PhonePe signature on the event, that
    *    ensures integrity of the webhook event
-   * @return {Boolean} PhonePe Webhook event
+   * @return {Object} PhonePe Webhook event
    */
-  constructWebhookEvent(data, signature): boolean {
-    return this.phonepe_.validateWebhook(data, signature, this.options_.salt);
+  constructWebhookEvent(
+    data,
+    signature
+  ): {
+    event: {
+      data: {
+        object?: Record<string, any>;
+      };
+    };
+  } {
+    if (this.phonepe_.validateWebhook(data, signature, this.options_.salt)) {
+      return {
+        event: {
+          data: {
+            object: data,
+          },
+        },
+      };
+    } else {
+      return {
+        event: {
+          data: {
+            object: undefined,
+          },
+        },
+      };
+    }
   }
 
   protected buildError(

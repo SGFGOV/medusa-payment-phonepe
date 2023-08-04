@@ -314,3 +314,11 @@ export interface PaymentInstrumentUPI {
   targetApp?: string;
   accountConstraints?: AccountConstraint[];
 }
+
+export interface PhonePeEvent {
+  type: string;
+  id: string;
+  data: {
+    object: Record<string, unknown>;
+  };
+}
