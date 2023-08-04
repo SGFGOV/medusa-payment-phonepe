@@ -318,10 +318,11 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         data as unknown as PaymentProcessorContext
       );
     } else {
-      return this.buildError(
+      return data as any;
+      /* return this.buildError(
         "unsupported by PhonePe",
         new Error("unable to update payment data")
-      );
+      );*/
     }
 
     // Prevent from updating the amount from here as it should go through

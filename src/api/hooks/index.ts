@@ -8,10 +8,12 @@ const route = Router();
 
 export default (app) => {
   app.use("/phonepe", route);
-  app.use(
+
+  route.options(
+    "/hooks",
     cors({
       origin: /.*.phonepe.com\/apis/gm,
-      methods: "POST",
+      methods: "POST,OPTIONS",
     })
   );
   route.post(
