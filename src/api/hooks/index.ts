@@ -10,7 +10,7 @@ export default (app) => {
   app.use("/phonepe", route);
   app.use(
     cors({
-      origin: "*.phonpe.com",
+      origin: /.*.phonepe.com\/apis/gm,
       methods: "POST",
     })
   );
