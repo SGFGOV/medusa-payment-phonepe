@@ -1,3 +1,5 @@
+import { PaymentProcessorError, PaymentStatus } from "@medusajs/medusa";
+
 export interface PhonePeOptions {
   redirectUrl: string;
   redirectMode: "REDIRECT" | "POST";
@@ -316,9 +318,54 @@ export interface PaymentInstrumentUPI {
 }
 
 export interface PhonePeEvent {
-  type: string;
+  type: PaymentStatusCodeValues;
   id: string;
   data: {
-    object: Record<string, unknown>;
+    object: PhonePeS2SResponse | PaymentProcessorError;
   };
+}
+
+export interface PhonePeS2SResponse {
+  success: boolean;
+  code: PaymentStatusCodeValues;
+  message: string;
+  data: PhonePeS2SResponseData;
+}
+
+export interface PhonePeS2SResponseData {
+  merchantId: string;
+  merchantTransactionId: string;
+  transactionId: string;
+  amount: number;
+  state: string;
+  responseCode: string;
+  paymentInstrument: PhonePeS2SResponsePaymentInstrument;
+}
+
+export type PhonePeS2SResponsePaymentInstrument =
+  PhonePeS2SResponsePaymentInstrumentUpi &
+    PhonePeS2SResponsePaymentInstrumentCard &
+    PhonePeS2SResponsePaymentInstrumentNetBanking;
+
+export interface PhonePeS2SResponsePaymentInstrumentUpi {
+  type: string;
+  utr: string;
+}
+
+export interface PhonePeS2SResponsePaymentInstrumentCard {
+  type: string;
+  cardType: string;
+  pgTransactionId: string;
+  bankTransactionId?: string;
+  pgAuthorizationCode: string;
+  arn: string;
+  bankId: string;
+}
+
+export interface PhonePeS2SResponsePaymentInstrumentNetBanking {
+  type: string;
+  pgTransactionId: string;
+  pgServiceTransactionId: string;
+  bankTransactionId?: string;
+  bankId: string;
 }

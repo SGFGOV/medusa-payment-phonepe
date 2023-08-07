@@ -2,6 +2,7 @@ import {
   AbstractCartCompletionStrategy,
   CartService,
   IdempotencyKeyService,
+  Logger,
   PaymentProcessorError,
   PostgresError,
 } from "@medusajs/medusa";
@@ -17,6 +18,11 @@ import {
   PaymentRequestUPIQr,
   RefundRequest,
   PhonePeEvent,
+  PaymentResponseData,
+  PaymentResponse,
+  PhonePeS2SResponse,
+  PaymentStatusCodeValues,
+  PhonePeS2SResponseData,
 } from "../../types";
 import PhonePeProviderService from "../../services/phonepe-provider";
 
@@ -24,17 +30,20 @@ const PAYMENT_PROVIDER_KEY = "pp_phonepe";
 
 export function constructWebhook({
   signature,
-  body,
+  encodedBody,
   container,
 }: {
   signature: string | string[] | undefined;
-  body: any;
+  encodedBody: { response: string };
   container: AwilixContainer;
-}) {
+}): PhonePeEvent {
   const phonepeProviderService = container.resolve(
     PAYMENT_PROVIDER_KEY
   ) as PhonePeProviderService;
-  return phonepeProviderService.constructWebhookEvent(body, signature);
+  const decodedBody = atob(
+    encodedBody.response
+  ) as unknown as PhonePeS2SResponse;
+  return phonepeProviderService.constructWebhookEvent(decodedBody, signature);
 }
 
 export function isPaymentCollection(id) {
@@ -70,20 +79,16 @@ export async function handlePaymentHook({
 }: {
   event: PhonePeEvent;
   container: AwilixContainer;
-  paymentIntent: {
-    id: string;
-    metadata: { cart_id?: string; resource_id?: string };
-    last_payment_error?: { message: string };
-  };
+  paymentIntent: PhonePeS2SResponse;
 }): Promise<{ statusCode: number }> {
-  const logger = container.resolve("logger");
+  const logger = container.resolve("logger") as Logger;
+  console.log("DataRecevied: ");
 
-  const cartId =
-    paymentIntent.metadata.cart_id ?? paymentIntent.metadata.resource_id; // Backward compatibility
-  const resourceId = paymentIntent.metadata.resource_id;
+  const cartId = paymentIntent.data.merchantTransactionId; // Backward compatibility
+  const resourceId = paymentIntent.data.transactionId;
 
   switch (event.type) {
-    case "payment_intent.succeeded":
+    case PaymentStatusCodeValues.PAYMENT_SUCCESS:
       try {
         await onPaymentIntentSucceeded({
           eventId: event.id,
@@ -100,26 +105,12 @@ export async function handlePaymentHook({
       }
 
       break;
-    case "payment_intent.amount_capturable_updated":
-      try {
-        await onPaymentAmountCapturableUpdate({
-          eventId: event.id,
-          cartId,
-          container,
-        });
-      } catch (err) {
-        const message = buildError(event.type, err);
-        logger.warn(message);
-        return { statusCode: 409 };
-      }
 
-      break;
-    case "payment_intent.payment_failed": {
-      const message =
-        paymentIntent.last_payment_error &&
-        paymentIntent.last_payment_error.message;
+    case PaymentStatusCodeValues.PAYMENT_ERROR: {
+      const message = paymentIntent.message;
       logger.error(
-        `The payment of the payment intent ${paymentIntent.id} has failed${EOL}${message}`
+        "The payment of the payment intent " +
+          `${paymentIntent.data.merchantTransactionId} has failed${EOL}${message}`
       );
       break;
     }

@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import { constructWebhook, handlePaymentHook } from "../utils/utils";
+import { PaymentResponse, PhonePeEvent, PhonePeS2SResponse } from "../../types";
 
 export default async (req: Request, res: Response) => {
-  let event;
+  let event: PhonePeEvent;
   try {
     event = constructWebhook({
       signature: req.headers["X-VERIFY"],
-      body: req.body,
+      encodedBody: req.body,
       container: req.scope,
     });
   } catch (err) {
@@ -14,7 +15,7 @@ export default async (req: Request, res: Response) => {
     return;
   }
 
-  const paymentIntent = event.data.object;
+  const paymentIntent = event.data.object as unknown as PhonePeS2SResponse;
 
   const { statusCode } = await handlePaymentHook({
     event,

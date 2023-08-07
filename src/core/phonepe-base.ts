@@ -32,7 +32,10 @@ import {
   PaymentRequest,
   PaymentResponse,
   PaymentResponseData,
+  PaymentStatusCodeValues,
+  PhonePeEvent,
   PhonePeOptions,
+  PhonePeS2SResponse,
   RefundRequest,
 } from "../types";
 import { MedusaError } from "@medusajs/utils";
@@ -349,30 +352,24 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
    *    ensures integrity of the webhook event
    * @return {Object} PhonePe Webhook event
    */
-  constructWebhookEvent(
-    data,
-    signature
-  ): {
-    event: {
-      data: {
-        object?: Record<string, any>;
-      };
-    };
-  } {
+  constructWebhookEvent(data: PhonePeS2SResponse, signature): PhonePeEvent {
     if (this.phonepe_.validateWebhook(data, signature, this.options_.salt)) {
       return {
-        event: {
-          data: {
-            object: data,
-          },
+        type: data.code,
+        id: data.data.transactionId,
+        data: {
+          object: data,
         },
       };
     } else {
       return {
-        event: {
-          data: {
-            object: undefined,
-          },
+        type: PaymentStatusCodeValues.PAYMENT_ERROR,
+        id: data.data.transactionId,
+        data: {
+          object: this.buildError(
+            "PhonePeError",
+            new Error("error validating data")
+          ) as any,
         },
       };
     }
