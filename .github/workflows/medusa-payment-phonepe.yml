@@ -1,11 +1,9 @@
 name: medusa-payment-phonepe
 on:
   push:
-    branches:
-      - main
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   unit-test:
