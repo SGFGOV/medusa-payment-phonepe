@@ -61,14 +61,17 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   protected init(): void {
     this.phonepe_ =
       this.phonepe_ ||
-      new PhonePeWrapper({
-        salt: this.options_.salt,
-        merchantId: this.options_.merchantId,
-        callbackUrl: this.options_.callbackUrl ?? "http://localhost:9000",
-        redirectMode: this.options_.redirectMode,
-        redirectUrl: this.options_.redirectUrl,
-        mode: this.options_.mode,
-      });
+      new PhonePeWrapper(
+        {
+          salt: this.options_.salt,
+          merchantId: this.options_.merchantId,
+          callbackUrl: this.options_.callbackUrl ?? "http://localhost:9000",
+          redirectMode: this.options_.redirectMode,
+          redirectUrl: this.options_.redirectUrl,
+          mode: this.options_.mode,
+        },
+        this.logger
+      );
   }
 
   abstract get paymentIntentOptions(): PaymentIntentOptions;
@@ -363,7 +366,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
    *    ensures integrity of the webhook event
    * @return {Object} PhonePe Webhook event
    */
-  constructWebhookEvent(data: PhonePeS2SResponse, signature): PhonePeEvent {
+  constructWebhookEvent(
+    data: PhonePeS2SResponse,
+    signature: string
+  ): PhonePeEvent {
     if (this.phonepe_.validateWebhook(data, signature, this.options_.salt)) {
       return {
         type: data.code,

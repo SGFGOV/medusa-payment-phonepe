@@ -20,10 +20,12 @@ import {
   PaymentResponseUPI,
   PaymentStatusCodeValues,
   PhonePeOptions,
+  PhonePeS2SResponse,
   RefundRequest,
 } from "../types";
 import {
   GetPaymentsParams,
+  Logger,
   PaymentProcessorError,
   PaymentSessionData,
 } from "@medusajs/medusa";
@@ -32,8 +34,10 @@ import { QueryResult } from "typeorm";
 export class PhonePeWrapper {
   options: PhonePeOptions;
   url: string;
+  logger: Logger | Console;
 
-  constructor(options: PhonePeOptions) {
+  constructor(options: PhonePeOptions, logger?: Logger) {
+    this.logger = logger ?? console;
     this.options = options;
     switch (this.options.mode) {
       case "production":
@@ -250,10 +254,17 @@ export class PhonePeWrapper {
     );
     return result.data;
   }
-  validateWebhook(data: any, signature: any, salt: string): boolean {
-    const { checksum } = createPostCheckSumHeader(data, salt, "");
-
+  validateWebhook(
+    data: PhonePeS2SResponse,
+    signature: string,
+    salt: string
+  ): boolean {
+    const { checksum } = createPostCheckSumHeader(data, salt, "", 0);
+    this.logger.info(
+      `verifying checksum received: ${signature}, computed: ${checksum} `
+    );
     if (checksum == signature) {
+      this.logger.debug("checksum valid checksum");
       return true;
     }
     return false;

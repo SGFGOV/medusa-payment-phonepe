@@ -33,16 +33,22 @@ export function constructWebhook({
   encodedBody,
   container,
 }: {
-  signature: string | string[] | undefined;
+  signature: string;
   encodedBody: { response: string };
   container: AwilixContainer;
 }): PhonePeEvent {
+  const logger = container.resolve("logger") as Logger;
   const phonepeProviderService = container.resolve(
     PAYMENT_PROVIDER_KEY
   ) as PhonePeProviderService;
   const decodedBody = atob(
     encodedBody.response
   ) as unknown as PhonePeS2SResponse;
+  logger.info(
+    `signature ${signature}\n encoded: ${JSON.stringify(
+      encodedBody
+    )} \n decoded body ${JSON.stringify(decodedBody)}`
+  );
   return phonepeProviderService.constructWebhookEvent(decodedBody, signature);
 }
 
@@ -82,10 +88,10 @@ export async function handlePaymentHook({
   paymentIntent: PhonePeS2SResponse;
 }): Promise<{ statusCode: number }> {
   const logger = container.resolve("logger") as Logger;
-  console.log("DataRecevied: ");
+  logger.info("Data received: " + JSON.stringify(paymentIntent));
 
   const cartId = paymentIntent.data.merchantTransactionId; // Backward compatibility
-  const resourceId = paymentIntent.data.transactionId;
+  const resourceId = paymentIntent.data.merchantTransactionId;
 
   switch (event.type) {
     case PaymentStatusCodeValues.PAYMENT_SUCCESS:
@@ -274,10 +280,11 @@ async function completeCartIfNecessary({
 export function createPostCheckSumHeader(
   payload: any,
   salt?: string,
-  apiString?: string
+  apiString?: string,
+  space = 2
 ) {
   const SALT_KEY = salt ?? process.env.PHONEPE_SALT ?? "test-salt";
-  const encodedBody = btoa(JSON.stringify(payload, null, 2));
+  const encodedBody = btoa(JSON.stringify(payload, null, space));
   const base64string = encodedBody + `${apiString}${SALT_KEY}`;
   const encodedPayload = SHA256(base64string).toString();
   const checksum = `${encodedPayload}###1`;

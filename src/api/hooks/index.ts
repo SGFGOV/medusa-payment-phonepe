@@ -19,7 +19,7 @@ export default (app) => {
   route.post(
     "/hooks",
     // phonepe constructEvent fails without body-parser
-    bodyParser.raw({ type: "application/json" }),
+    bodyParser.json({ type: "application/json" }),
     wrapHandler(phonepeHooks)
   );
   return app;

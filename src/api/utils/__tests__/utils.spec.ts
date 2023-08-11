@@ -3,33 +3,11 @@ import { EOL } from "os";
 
 import {
   buildError,
-  createGetChecksumHeader,
   createPostCheckSumHeader,
-  handlePaymentHook,
   isPaymentCollection,
 } from "../utils";
-import { container } from "../__fixtures__/container";
-import {
-  existingCartId,
-  existingCartIdWithCapturedStatus,
-  existingResourceId,
-  existingResourceNotCapturedId,
-  nonExistingCartId,
-  orderIdForExistingCartId,
-  paymentId,
-  paymentIntentId,
-  sampleMerchantData,
-  testCheckSumValue,
-} from "../__fixtures__/data";
-import {
-  describe,
-  beforeEach,
-  afterEach,
-  beforeAll,
-  expect,
-  jest,
-  it,
-} from "@jest/globals";
+import { sampleMerchantData, testCheckSumValue } from "../__fixtures__/data";
+import { describe, afterEach, expect, jest, it } from "@jest/globals";
 import dotenv from "dotenv";
 dotenv.config();
 
