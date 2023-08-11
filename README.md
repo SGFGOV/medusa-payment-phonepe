@@ -54,8 +54,8 @@ const plugins = [
   
 
    options: {
-                redirectUrl: "http://localhost:8000",
-                callbackUrl: "http://localhost:9000",
+                redirectUrl: "http://localhost:8000/api/payment-confirmed",
+                callbackUrl: "http://localhost:9000/phonepe/hook",
                 salt: process.env.PHONEPE_SALT,
                 merchantId:
                     process.env.PHONEPE_MERCHANT_ACCOUNT,
@@ -66,6 +66,8 @@ const plugins = [
   },
   ...]
 ```
+you can replace http://localhost:8000 with your http(s)://your-client-domain
+you can replace http://localhost:9000 with your http(s)://your-server-hook
 ## Client side configuration
 
 
@@ -75,88 +77,193 @@ For the nextjs start you need to  make the following changes
 ```
 
 ```
-2. Create a button for PhonePe <next-starter>/src/modules/checkout/components/payment-button/phonepe-payment-button.tsx
+2. Create a route to handle post requests from phone pe by creating a route under
+  /app/api/payment-confirmed/route.ts
+
+in that add the following code 
+
+```
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable require-jsdoc */
+import { medusaClient } from "@lib/config";
+import { createPostCheckSumHeader } from "@lib/util/phonepe-create-post-checksum-header";
+
+import { notFound } from "next/navigation";
+import { NextRequest, NextResponse } from "next/server";
+import { PaymentStatusCodeValues } from "types/phonepe-types";
+
+export async function POST(
+    request: NextRequest,
+    _response: NextResponse
+): Promise<NextResponse<unknown>> {
+    const urlSplit = request.url.split("//");
+    const base = urlSplit[1].split("/")[0];
+
+    const data = await request.formData();
+
+    const receivedChecksum = data.get("checksum");
+    const merchantTransactionId = data.get("transactionId");
+    const code = data.get("code");
+    const merchantId = data.get("merchantId");
+
+    let verificationData = "";
+    const providerReferenceId = data.get("providerReferenceId");
+
+    let cartId = merchantTransactionId?.valueOf() as string;
+    const cartIdParts = cartId.split("_");
+    cartId = `${cartIdParts[0]}_${cartIdParts[1]}`;
+
+    let redirectPath: string | undefined;
+    const redirectErrorPath = `/cart`;
+
+    if (code?.valueOf() == PaymentStatusCodeValues.PAYMENT_SUCCESS) {
+        if (!merchantTransactionId?.valueOf() || !merchantId?.valueOf()) {
+            notFound();
+        }
+    } else if (code?.valueOf() != PaymentStatusCodeValues.PAYMENT_SUCCESS) {
+        return NextResponse.redirect(`/cart`);
+    } else {
+        data.forEach((value, key) => {
+            if (key != "checksum") verificationData += value;
+        });
+
+        const { checksum } = createPostCheckSumHeader(
+            verificationData,
+            process.env.PHONEPE_SALT,
+            ""
+        );
+
+        if (
+            checksum == receivedChecksum?.valueOf() ||
+            !process.env.TEST_DISABLED
+        ) {
+            if (checksum != receivedChecksum?.valueOf()) {
+                console.warn("running in test mode.. This is dangerous!! ");
+            }
+            
+            let cartResp = await medusaClient.carts.retrieve(cartId);
+
+            cartResp = await medusaClient.carts.updatePaymentSession(
+                cartResp.cart.id,
+                cartResp.cart.payment_session!.provider_id,
+                {
+                    data: {
+                        ...cartResp.cart.payment_session?.data,
+                        merchantTransacionId: merchantTransactionId,
+                        providerReferenceId: providerReferenceId
+                    }
+                }
+            );
+            // console.log("updated providerReferenceId id in payment session", JSON.stringify(cartResp.cart))
+            try {
+                const authorizedCart = await medusaClient.carts.complete(
+                    cartResp.cart.id
+                );
+                console.log("finalized cart");
+                if (authorizedCart.data.id == cartResp.cart.id) {
+                    console.log("error: " + redirectErrorPath);
+                }
+                redirectPath = `/order/confirmed/${authorizedCart.data.id}`;
+                console.log("confirmed: ", redirectPath);
+            } catch (e) {
+                console.log(
+                    "error: " + (e as Error).message + "\n" + JSON.stringify(e)
+                );
+            }
+        }
+    }
+    const locale = request.nextUrl.locale ?? "en";
+    const computedUrl = `${urlSplit[0]}//${base}${locale ? "/" + locale : ""}${
+        redirectPath ?? redirectErrorPath
+    }`;
+    console.log("computed URL:" + computedUrl);
+    return NextResponse.redirect(new URL(computedUrl), 302);
+}
+
+export default POST;
+
+
+```
+
+3. Create a button for PhonePe <next-starter>/src/modules/checkout/components/payment-button/phonepe-payment-button.tsx
 
 like below
 
 
 
 ````
-import { useCheckout } from "@lib/context/checkout-context"
-import { PaymentSession } from "@medusajs/medusa"
-import Button from "@modules/common/components/button"
-import Spinner from "@modules/common/icons/spinner"
-import { useCart, useUpdatePaymentSession } from "medusa-react"
-import { useCallback, useEffect, useState } from "react"
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { PaymentSession } from "@medusajs/medusa";
+import Button from "@modules/common/components/button";
+import Spinner from "@modules/common/icons/spinner";
+import { useCart } from "medusa-react";
+import { useCallback, useEffect, useState } from "react";
 
 export const PhonePePaymentButton = ({
     session,
-    notReady,
-  }: {
-    session: PaymentSession
-    notReady: boolean
-  }) => {
-    const [disabled, setDisabled] = useState(false)
-    const [submitting, setSubmitting] = useState(false)
+    notReady
+}: {
+    session: PaymentSession;
+    notReady: boolean;
+}) => {
+    const [disabled, setDisabled] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | undefined>(
-      undefined
-    )
-  
-    const { cart } = useCart()
-    const { onPaymentCompleted } = useCheckout()
-    
-    
+        undefined
+    );
+
+    const { cart } = useCart();
+
     useEffect(() => {
-      console.log(JSON.stringify(session))
-      if (!session && cart?.payment.provider_id == "phonepe") {
-        setDisabled(true)
-      } else {
-        setDisabled(false)
-      }
-    }, [session,cart])
-
-    
-    
-        
-    
-        
-  const handlePayment = useCallback(() => {
-    console.log(session)
-    setSubmitting(true)
-    if ( !cart) {
-      setSubmitting(false)
-      return
-      }
-      console.log(((session.data.data as any).instrumentResponse as any).redirectInfo.url)
-      if(((session.data.data as any).instrumentResponse as any).redirectInfo.url.includes("https"))
-      window.location.replace(((session.data.data as any).instrumentResponse as any).redirectInfo.url)
-      onPaymentCompleted()
-    }
-    
-    ,[session, cart]);
-
-    /*useEffect(() => {
-        if (session) {
-         handlePayment();
+        console.log(JSON.stringify(session));
+        if (!session && cart?.payment.provider_id == "phonepe") {
+            setDisabled(true);
+        } else {
+            setDisabled(false);
         }
-      }, [session])*/
+    }, [session, cart]);
+
+    const handlePayment = useCallback(() => {
+        console.log(session);
+        setSubmitting(true);
+        if (!cart) {
+            setSubmitting(false);
+            return;
+        }
+        console.log(
+            ((session.data.data as any).instrumentResponse as any).redirectInfo
+                .url
+        );
+        if (
+            (
+                (session.data.data as any).instrumentResponse as any
+            ).redirectInfo.url.includes("https")
+        ) {
+            window.location.replace(
+                ((session.data.data as any).instrumentResponse as any)
+                    .redirectInfo.url
+            );
+        } else {
+            setErrorMessage("oops didn't get redirection path");
+        }
+    }, [session, cart]);
+
     return (
-      <>
-        <Button
-          disabled={submitting || disabled || notReady}
-          onClick={handlePayment}
-        >
-          {submitting ? <Spinner /> : "Checkout"}
-        </Button>
-        {errorMessage && (
-          <div className="text-red-500 text-small-regular mt-2">
-            {errorMessage}
-          </div>
-        )}
-      </>
-    )
-  }
+        <>
+            <Button
+                disabled={submitting || disabled || notReady}
+                onClick={handlePayment}
+            >
+                {submitting ? <Spinner /> : "Checkout"}
+            </Button>
+            {errorMessage && (
+                <div className="text-red-500 text-small-regular mt-2">
+                    {errorMessage}
+                </div>
+            )}
+        </>
+    );
+};
     
 ````
 

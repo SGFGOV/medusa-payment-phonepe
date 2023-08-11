@@ -34,6 +34,7 @@ import {
 import { PaymentIntentDataByStatus } from "../../__fixtures__/data";
 import { FindOptionsUtils } from "typeorm";
 import { createPostCheckSumHeader } from "../../api/utils/utils";
+import PhonePeBase from "../phonepe-base";
 let config: PhonePeOptions = {
   salt: "test",
   merchantId: "test",
@@ -45,7 +46,7 @@ let config: PhonePeOptions = {
 if (!isMocksEnabled()) {
   dotenv.config();
 }
-const container = {};
+const container = { logger: console };
 config = {
   ...config,
   salt: process.env.PHONEPE_SALT!,
@@ -107,8 +108,10 @@ describe("PhonePeTest", () => {
         });
         const statusRequest = {
           merchantId: config.merchantId,
-          merchantTransactionId: initiatePaymentContextWithExistingCustomer
-            .paymentSessionData.merchantTransactionId as string,
+          merchantTransactionId: `${
+            initiatePaymentContextWithExistingCustomer.paymentSessionData
+              .merchantTransactionId as string
+          }_${PhonePeBase.sequenceCount}`,
           mode: config.mode,
         };
         const status = await phonepeTest.getPaymentStatus(statusRequest);

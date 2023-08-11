@@ -54,8 +54,7 @@ export class PhonePeWrapper {
 
     apiNewEndpoint?: string
   ): Promise<
-    | AxiosResponse<PaymentResponse | PaymentCheckStatusResponse>
-    | PaymentProcessorError
+    PaymentResponse | PaymentCheckStatusResponse | PaymentProcessorError
   > {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v1/pay";
     const url =
@@ -117,7 +116,8 @@ export class PhonePeWrapper {
     amount: string,
     merchantTransactionId: string,
     customer_id: string,
-    mobileNumber?: string
+    mobileNumber?: string,
+    attemptId?: string
   ): Promise<PaymentRequest | PaymentProcessorError> {
     const phonePeRequest: PaymentRequest = {
       merchantId: this.options.merchantId,
@@ -126,7 +126,7 @@ export class PhonePeWrapper {
         this.options.redirectUrl?.length == 0
           ? "https://localhost:8000"
           : this.options.redirectUrl,
-      merchantTransactionId: merchantTransactionId,
+      merchantTransactionId: `${merchantTransactionId}_${attemptId}`,
       merchantUserId: customer_id,
       amount: parseInt(amount),
       callbackUrl: this.options.callbackUrl,

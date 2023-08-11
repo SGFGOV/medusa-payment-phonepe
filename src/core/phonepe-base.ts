@@ -22,6 +22,7 @@ import {
   PaymentProcessorError,
   PaymentProcessorSessionResponse,
   PaymentSessionStatus,
+  Logger,
 } from "@medusajs/medusa";
 import {
   ErrorCodes,
@@ -47,10 +48,11 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
 
   protected readonly options_: PhonePeOptions;
   protected phonepe_: PhonePeWrapper;
-
-  protected constructor(_, options) {
-    super(_, options);
-
+  protected logger: Logger;
+  static sequenceCount = 0;
+  protected constructor(container: { logger: Logger }, options) {
+    super(container as any, options);
+    this.logger = container.logger;
     this.options_ = options;
 
     this.init();
@@ -109,6 +111,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
           currentMerchantTransactionId
         )) as PaymentCheckStatusResponse;
       // const data = paymentStatusResponse as PaymentCheckStatusResponse;
+      this.logger.info(
+        `response from phonepe: ${JSON.stringify(paymentStatusResponse)}`
+      );
       switch (paymentStatusResponse.code) {
         case "PAYMENT_PENDING":
           return PaymentSessionStatus.PENDING;
@@ -124,7 +129,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
           return PaymentSessionStatus.PENDING;
       }
     } catch (e) {
-      console.log(JSON.stringify(e));
+      this.logger.error(`error from phonepe: ${JSON.stringify(e)}`);
       const error: PaymentProcessorError = this.buildError("PHONPE_ERROR", e);
       return PaymentSessionStatus.ERROR;
     }
@@ -143,18 +148,24 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       customer,
       paymentSessionData,
     } = context;
-
+    PhonePeBase.sequenceCount++;
     const request = await this.phonepe_.createPhonePeStandardRequest(
       amount.toString(),
       (paymentSessionData.merchantTransactionId as string) ?? resource_id,
       customer?.id ?? email,
-      customer?.phone
+      customer?.phone,
+      PhonePeBase.sequenceCount.toString()
+    );
+    this.logger.info(
+      ` num requests = ${PhonePeBase.sequenceCount}, context: ${JSON.stringify(
+        context
+      )}`
     );
     try {
       const response = await this.phonepe_.postPaymentRequestToPhonePe(
         request as PaymentRequest
       );
-
+      this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
       const result: PaymentProcessorSessionResponse = {
         session_data: {
           ...response,
@@ -169,12 +180,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
 
       return result;
     } catch (error) {
+      this.logger.error(`error from phonepe: ${JSON.stringify(error)}`);
       const e = error as Error;
-      return {
-        error: e.message,
-        code: e.name,
-        detail: JSON.stringify(e),
-      } as PaymentProcessorError;
+      return this.buildError("initialization error", e);
     }
   }
 
@@ -276,8 +284,13 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
     };
 
     try {
-      return await this.phonepe_.postRefundRequestToPhonePe(refundRequest);
+      const response = await this.phonepe_.postRefundRequestToPhonePe(
+        refundRequest
+      );
+      this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
+      return response;
     } catch (e) {
+      this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
       return this.buildError("An error occurred in refundPayment", e);
     }
 
@@ -295,8 +308,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         request.merchantId,
         request.merchantTransactionId
       );
+      this.logger.info(`response from phonepe: ${JSON.stringify(intent)}`);
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (e) {
+      this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
       return this.buildError("An error occurred in retrievePayment", e);
     }
   }
@@ -306,14 +321,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   ): Promise<PaymentProcessorError | PaymentProcessorSessionResponse | void> {
     /** phonepe doesn't allow you to update an ongoing payment, you need to initiate new one */
     /* if (phonepeId !== (paymentSessionData.customer as Customer).id) {*/
+    this.logger.info(
+      `update request context from medusa: ${JSON.stringify(context)}`
+    );
     const result = await this.initiatePayment(context);
-    if (isPaymentProcessorError(result)) {
-      return this.buildError(
-        "An error occurred in updatePayment during the initiate of the new payment for the new customer",
-        result
-      );
-      //      }
-    }
     return result;
   }
 
@@ -375,13 +386,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
     }
   }
 
-  protected buildError(
-    message: string,
-    e: PaymentProcessorError | Error
-  ): PaymentProcessorError {
+  protected buildError(message: string, e: Error): PaymentProcessorError {
     return {
       error: message,
-      code: "code" in e ? e.code : "",
+      code: isPaymentProcessorError(e) ? e.code : e.name,
       detail: isPaymentProcessorError(e)
         ? `${e.error}${EOL}${e.detail ?? ""}`
         : "detail" in e
