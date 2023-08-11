@@ -329,7 +329,7 @@ Dear Medusa Enthusiasts,
 
 I hope this message finds you all in high spirits and enthusiasm for the world of e-commerce! Today, I reach out to our vibrant Medusa community with a heartfelt appeal that will strengthen our collective journey and elevate our online stores to new heights. I am thrilled to present the Medusa-Payment-PhonePe plugin, a community-driven project designed to streamline payment processing for our beloved Medusa platform.
 
-As a dedicated member of this community, I, SGFGOV, have invested my time and passion into crafting this valuable plugin that bridges the gap between online retailers and their customers. It is with great humility that I invite you to participate in this open-source initiative by [sponsoring the Medusa-Payment-PhonePe plugin through GitHub](https://github.com/sponsors/SGFGOV).
+As a dedicated member of this community, I, have invested my time and passion into crafting this valuable plugin that bridges the gap between online retailers and their customers. It is with great humility that I invite you to participate in this open-source initiative by [sponsoring the Medusa-Payment-PhonePe plugin through GitHub](https://github.com/sponsors/SGFGOV).
 
 Your sponsorship, no matter the size, will make a world of difference in advancing the Medusa ecosystem. It will empower me to focus on the continuous improvement and maintenance of the Medusa-Payment-PhonePe plugin, ensuring it remains reliable, secure, and seamlessly integrated with Medusa.
 
@@ -343,5 +343,5 @@ Thank you for your time, and thank you for being an integral part of our Medusa 
 
 With warm regards,
 
-SGFGOV
-Lead Developer, Medusa-Payment-PhonePe Plugin for Medusa
+Govind
+
