@@ -424,7 +424,6 @@ describe("PhonePeTest", () => {
         ""
       );
       const result = phonepeTest.constructWebhookEvent(
-        responseHookData,
         signature.encodedBody,
         signature.checksum
       );

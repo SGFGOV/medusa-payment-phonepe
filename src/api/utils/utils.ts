@@ -10,14 +10,19 @@ import { AwilixContainer } from "awilix";
 import { MedusaError } from "medusa-core-utils";
 import { EOL } from "os";
 import SHA256 from "crypto-js/sha256";
+import axios from "axios";
+import api from "..";
 import {
   PaymentRequestUPI,
   PaymentRequestUPICollect,
   PaymentRequestUPIQr,
   RefundRequest,
   PhonePeEvent,
+  PaymentResponseData,
+  PaymentResponse,
   PhonePeS2SResponse,
   PaymentStatusCodeValues,
+  PhonePeS2SResponseData,
 } from "../../types";
 import PhonePeProviderService from "../../services/phonepe-provider";
 
@@ -36,16 +41,11 @@ export function constructWebhook({
   const phonepeProviderService = container.resolve(
     PAYMENT_PROVIDER_KEY
   ) as PhonePeProviderService;
-  const decodedBody = atob(
-    encodedBody.response
-  ) as unknown as PhonePeS2SResponse;
+
   logger.info(
-    `signature ${signature}\n encoded: ${JSON.stringify(
-      encodedBody
-    )} \n decoded body ${JSON.stringify(decodedBody)}`
+    `signature ${signature}\n encoded: ${JSON.stringify(encodedBody)}`
   );
   return phonepeProviderService.constructWebhookEvent(
-    decodedBody,
     encodedBody.response,
     signature
   );
@@ -89,7 +89,11 @@ export async function handlePaymentHook({
   const logger = container.resolve("logger") as Logger;
   logger.info("Data received: " + JSON.stringify(paymentIntent));
 
-  const cartId = paymentIntent.data.merchantTransactionId; // Backward compatibility
+  let cartId = paymentIntent.data.merchantTransactionId; // Backward compatibility
+
+  const cartIdParts = cartId.split("_");
+  cartId = `${cartIdParts[0]}_${cartIdParts[1]}`;
+
   const resourceId = paymentIntent.data.merchantTransactionId;
 
   switch (event.type) {
