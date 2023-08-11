@@ -66,7 +66,7 @@ export class PhonePeWrapper {
     const encodedMessage = createPostPaymentChecksumHeader(payload);
     const headers = {
       "Content-Type": "application/json",
-      accept: "application/json",
+      /* accept: "application/json",*/
       "X-VERIFY": encodedMessage.checksum,
     };
     const reqUrl = `${url}${apiEndpoint}`;

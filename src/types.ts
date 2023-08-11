@@ -349,23 +349,25 @@ export type PhonePeS2SResponsePaymentInstrument =
 
 export interface PhonePeS2SResponsePaymentInstrumentUpi {
   type: string;
-  utr: string;
+  utr?: string;
 }
 
 export interface PhonePeS2SResponsePaymentInstrumentCard {
   type: string;
-  cardType: string;
-  pgTransactionId: string;
+  cardType?: string;
+  pgTransactionId?: string;
   bankTransactionId?: string;
-  pgAuthorizationCode: string;
-  arn: string;
-  bankId: string;
+  pgAuthorizationCode?: string;
+  arn?: string;
+  bankId?: string;
+  utr?: string;
 }
 
 export interface PhonePeS2SResponsePaymentInstrumentNetBanking {
   type: string;
-  pgTransactionId: string;
-  pgServiceTransactionId: string;
+  pgTransactionId?: string;
+  pgServiceTransactionId?: string;
   bankTransactionId?: string;
-  bankId: string;
+  bankId?: string;
+  utr?: string;
 }

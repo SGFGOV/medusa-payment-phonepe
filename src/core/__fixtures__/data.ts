@@ -7,6 +7,7 @@ import {
 } from "../../__mocks__/phonepe";
 import { PaymentIntentDataByStatus } from "../../__fixtures__/data";
 import { Customer, PaymentProcessorContext } from "@medusajs/medusa";
+import { PaymentStatusCodeValues, PhonePeS2SResponse } from "../../types";
 
 // INITIATE PAYMENT DATA
 
@@ -265,9 +266,9 @@ export const SamplePayloadBase64StdCheckout = {
     type: "PAY_PAGE",
   },
 };
-export const responseHookData = {
+export const responseHookData: PhonePeS2SResponse = {
   success: true,
-  code: "PAYMENT_SUCCESS",
+  code: PaymentStatusCodeValues.PAYMENT_SUCCESS,
   message: "Your request has been successfully completed.",
   data: {
     merchantId: "FKRT",
