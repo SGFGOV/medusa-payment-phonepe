@@ -8,6 +8,7 @@ import {
   createPostPaymentChecksumHeader,
   createPostRefundChecksumHeader,
   createPostValidateVpaChecksumHeader,
+  verifyPostCheckSumHeader,
 } from "../api/utils/utils";
 import {
   PaymentCheckStatusResponse,
@@ -254,12 +255,8 @@ export class PhonePeWrapper {
     );
     return result.data;
   }
-  validateWebhook(
-    data: PhonePeS2SResponse,
-    signature: string,
-    salt: string
-  ): boolean {
-    const { checksum } = createPostCheckSumHeader(data, salt, "", 0);
+  validateWebhook(data: string, signature: string, salt: string): boolean {
+    const { checksum } = verifyPostCheckSumHeader(data, salt, "");
     this.logger.info(
       `verifying checksum received: ${signature}, computed: ${checksum} `
     );

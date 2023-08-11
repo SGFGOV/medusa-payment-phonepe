@@ -10,19 +10,14 @@ import { AwilixContainer } from "awilix";
 import { MedusaError } from "medusa-core-utils";
 import { EOL } from "os";
 import SHA256 from "crypto-js/sha256";
-import axios from "axios";
-import api from "..";
 import {
   PaymentRequestUPI,
   PaymentRequestUPICollect,
   PaymentRequestUPIQr,
   RefundRequest,
   PhonePeEvent,
-  PaymentResponseData,
-  PaymentResponse,
   PhonePeS2SResponse,
   PaymentStatusCodeValues,
-  PhonePeS2SResponseData,
 } from "../../types";
 import PhonePeProviderService from "../../services/phonepe-provider";
 
@@ -49,7 +44,11 @@ export function constructWebhook({
       encodedBody
     )} \n decoded body ${JSON.stringify(decodedBody)}`
   );
-  return phonepeProviderService.constructWebhookEvent(decodedBody, signature);
+  return phonepeProviderService.constructWebhookEvent(
+    decodedBody,
+    encodedBody.response,
+    signature
+  );
 }
 
 export function isPaymentCollection(id) {
@@ -289,6 +288,18 @@ export function createPostCheckSumHeader(
   const encodedPayload = SHA256(base64string).toString();
   const checksum = `${encodedPayload}###1`;
   return { checksum, encodedBody };
+}
+
+export function verifyPostCheckSumHeader(
+  payload: string,
+  salt?: string,
+  apiString?: string
+) {
+  const SALT_KEY = salt ?? process.env.PHONEPE_SALT ?? "test-salt";
+  const base64string = payload + `${apiString}${SALT_KEY}`;
+  const encodedPayload = SHA256(base64string).toString();
+  const checksum = `${encodedPayload}###1`;
+  return { checksum, payload };
 }
 
 export function createPostPaymentChecksumHeader(
