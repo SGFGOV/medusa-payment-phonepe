@@ -93,8 +93,8 @@ export async function handlePaymentHook({
 
   const cartIdParts = cartId.split("_");
   cartId = `${cartIdParts[0]}_${cartIdParts[1]}`;
-
-  const resourceId = paymentIntent.data.merchantTransactionId;
+  logger.info("computed cart: " + cartId);
+  const resourceId = cartId;
 
   switch (event.type) {
     case PaymentStatusCodeValues.PAYMENT_SUCCESS:
@@ -231,6 +231,8 @@ async function completeCartIfNecessary({
   transactionManager,
 }) {
   const orderService = container.resolve("orderService");
+  const logger = container.resolve("logger") as Logger;
+  logger.info(`completeing cart ${cartId}`);
   const order = await orderService
     .retrieveByCartId(cartId)
     .catch(() => undefined);
@@ -277,6 +279,8 @@ async function completeCartIfNecessary({
         response_body["code"] as string
       );
     }
+  } else {
+    logger.info(`cart completed ${cartId}`);
   }
 }
 

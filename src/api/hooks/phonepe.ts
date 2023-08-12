@@ -5,6 +5,7 @@ import { Logger } from "@medusajs/medusa";
 
 export default async (req: Request, res: Response) => {
   let event: PhonePeEvent;
+  const logger = req.scope.resolve("logger") as Logger;
   try {
     event = constructWebhook({
       signature: req.headers["x-verify"] as string,
@@ -12,7 +13,6 @@ export default async (req: Request, res: Response) => {
       container: req.scope,
     });
   } catch (err) {
-    const logger = req.scope.resolve("logger") as Logger;
     logger.info(
       `${JSON.stringify(req.body)} ${err.message} header:${JSON.stringify(
         req.headers
@@ -29,5 +29,6 @@ export default async (req: Request, res: Response) => {
     container: req.scope,
     paymentIntent,
   });
+  logger.log(`payment status code: ${statusCode}`);
   res.sendStatus(statusCode);
 };
