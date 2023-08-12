@@ -42,6 +42,12 @@ import {
 import { MedusaError } from "@medusajs/utils";
 import { PhonePeWrapper } from "./phonepe-wrapper";
 import { buildError } from "../api/utils/utils";
+import { isTooManyTries, retryAsync } from "ts-retry";
+
+export type TransactionIdentifier = {
+  merchantId: string;
+  merchantTransactionId: string;
+};
 
 abstract class PhonePeBase extends AbstractPaymentProcessor {
   static identifier = "";
@@ -201,10 +207,10 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   > {
     try {
       const { merchantId, merchantTransactionId } = paymentSessionData.data as {
-        merchantId;
-        merchantTransactionId;
+        merchantId: string;
+        merchantTransactionId: string;
       };
-      const status = await this.getPaymentStatus({
+      const status = await this.checkAuthorisationWithBackOff({
         merchantId,
         merchantTransactionId,
       });
@@ -215,6 +221,56 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       };
       return error;
     }
+  }
+
+  async checkAuthorisationWithBackOff(
+    t: TransactionIdentifier
+  ): Promise<PaymentSessionStatus> {
+    try {
+      return await this.retryFunction(t, 3e3, 10);
+    } catch (err) {
+      if (isTooManyTries(err)) {
+        try {
+          return await this.retryFunction(t, 6e3, 10);
+        } catch (err) {
+          if (isTooManyTries(err)) {
+            try {
+              return await this.retryFunction(t, 10e3, 6);
+            } catch (err) {
+              if (isTooManyTries(err)) {
+                try {
+                  return await this.retryFunction(t, 30e3, 2);
+                } catch (err) {
+                  if (isTooManyTries(err)) {
+                    return await this.retryFunction(t, 60e3, 15);
+                  }
+                  return PaymentSessionStatus.PENDING;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return PaymentSessionStatus.ERROR;
+  }
+
+  async retryFunction(
+    t: TransactionIdentifier,
+    delay: number,
+    maxRetry: number
+  ): Promise<PaymentSessionStatus> {
+    return await retryAsync(
+      async () => {
+        /* do something */
+        return await this.getPaymentStatus(t);
+      },
+      {
+        delay: delay,
+        maxTry: maxRetry,
+        until: (lastResult) => lastResult === PaymentSessionStatus.AUTHORIZED,
+      }
+    );
   }
 
   async cancelPayment(
@@ -245,6 +301,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       const intent = await this.phonepe_.capture(
         paymentSessionData.data as PaymentResponseData
       );
+      this.logger.info(`result of capture : ${JSON.stringify(intent)}`);
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (error) {
       if (error.code === ErrorCodes.PAYMENT_INTENT_UNEXPECTED_STATE) {
@@ -342,9 +399,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
     } else {
       return data as any;
       /* return this.buildError(
-        "unsupported by PhonePe",
-        new Error("unable to update payment data")
-      );*/
+    "unsupported by PhonePe",
+    new Error("unable to update payment data")
+  );*/
     }
 
     // Prevent from updating the amount from here as it should go through

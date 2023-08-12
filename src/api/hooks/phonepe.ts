@@ -29,6 +29,6 @@ export default async (req: Request, res: Response) => {
     container: req.scope,
     paymentIntent,
   });
-  logger.log(`payment status code: ${statusCode}`);
+  logger.info(`payment status code: ${statusCode}`);
   res.sendStatus(statusCode);
 };

@@ -3,6 +3,8 @@ import {
   CartService,
   IdempotencyKeyService,
   Logger,
+  OrderService,
+  PaymentCollection,
   PaymentProcessorError,
   PostgresError,
 } from "@medusajs/medusa";
@@ -109,7 +111,7 @@ export async function handlePaymentHook({
         });
       } catch (err) {
         const message = buildError(event.type, err);
-        logger.warn(message);
+        logger.error(message);
         return { statusCode: 409 };
       }
 
@@ -186,16 +188,21 @@ async function capturePaymenCollectiontIfNecessary({
   const paymentCollectionService = container.resolve(
     "paymentCollectionService"
   );
-
-  const paycol = await paymentCollectionService
+  const logger = container.resolve("logger") as Logger;
+  logger.info("attempting to collect payment");
+  const paycol = (await paymentCollectionService
     .retrieve(resourceId, { relations: ["payments"] })
-    .catch(() => undefined);
+    .catch(() => undefined)) as PaymentCollection;
 
   if (paycol?.payments?.length) {
-    const payment = paycol.payments.find(
-      (pay) => pay.data.id === paymentIntent.id
+    logger.info(`attempting to collect payment ${JSON.stringify(paycol)}`);
+    logger.info(
+      `attempting to collect payment of ${paymentIntent.merchantTransacionId}`
     );
 
+    const payment = paycol.payments.find(
+      (pay) => pay.data.id === paymentIntent.merchantTransacionId
+    );
     if (payment && !payment.captured_at) {
       await manager.transaction(async (manager) => {
         await paymentCollectionService
@@ -211,16 +218,20 @@ async function capturePaymentIfNecessary({
   transactionManager,
   container,
 }) {
-  const orderService = container.resolve("orderService");
+  const logger = container.resolve("logger") as Logger;
+  logger.info("attempting to capture payment");
+  const orderService = container.resolve("orderService") as OrderService;
   const order = await orderService
     .withTransaction(transactionManager)
     .retrieveByCartId(cartId)
-    .catch(() => undefined);
-
+    .catch(() => {
+      logger.info(`No Order with cart Id ${cartId}`);
+    });
+  logger.info(`attempting to capture payment order ${order!.id}`);
   if (order?.payment_status !== "captured") {
     await orderService
       .withTransaction(transactionManager)
-      .capturePayment(order.id);
+      .capturePayment(order!.id);
   }
 }
 
@@ -232,12 +243,13 @@ async function completeCartIfNecessary({
 }) {
   const orderService = container.resolve("orderService");
   const logger = container.resolve("logger") as Logger;
-  logger.info(`completeing cart ${cartId}`);
+  logger.info(`completing cart ${cartId}`);
   const order = await orderService
     .retrieveByCartId(cartId)
     .catch(() => undefined);
 
   if (!order) {
+    logger.info(`initiating cart completing startegy ${cartId}`);
     const completionStrat: AbstractCartCompletionStrategy = container.resolve(
       "cartCompletionStrategy"
     );
@@ -263,15 +275,19 @@ async function completeCartIfNecessary({
           idempotency_key: eventId,
         });
     }
-
+    logger.info(`obtained idempotence key ${cartId}`);
     const cart = await cartService
       .withTransaction(transactionManager)
       .retrieve(cartId, { select: ["context"] });
-
+    logger.info(`cart retrieved ${JSON.stringify(cart)}`);
     const { response_code, response_body } = await completionStrat
       .withTransaction(transactionManager)
       .complete(cartId, idempotencyKey, { ip: cart.context?.ip as string });
-
+    logger.info(
+      `cart completed status: ${response_code} body: ${JSON.stringify(
+        response_body
+      )}`
+    );
     if (response_code !== 200) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,
