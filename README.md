@@ -4,22 +4,36 @@
 
 Dear Developers and E-commerce Enthusiasts,
 
-Are you ready to revolutionize the world of online stores with MedusaJS? We have an exciting opportunity that will make payment processing a breeze for our beloved Medusa platform! Introducing the Medusa-Payment-PhonePe plugin, a community-driven project that brings the immensely popular [PHONEPE](https://phonepe.com) payment gateway to our MedusaJS commerce stack.
+Are you a developer based in India ? Are you looking for a payment solutions that support UPI, and other india specific modes natively. If you are 
 
-**What's in it for You:**
+A🚀 Welcome to the future of web development and eCommerce! Are you ready to harness the power of seamless payments? Look no further than the Medusa Payment PhonPe plugin – your gateway to a world of convenience, efficiency, and innovation.
 
-🚀 Streamline Payment Processing: With Medusa-Payment-PhonePe, you can unleash the full potential of PhonePe's features, ensuring seamless and secure payments for your customers.
+In today's fast-paced digital landscape, a smooth and secure payment experience is the cornerstone of success for any eCommerce platform. We understand the challenges you face as a web developer, striving to create exceptional user experiences while ensuring the highest level of trust and reliability. That's where Medusa Payment PhonPe comes in!
 
-🌐 Global Reach: Engage with customers worldwide, as PhonePe supports various currencies and payment methods, catering to a diverse audience.
+Imagine a plugin that effortlessly integrates PhonPe, one of the most trusted and widely-used payment gateways, into the MedusaJS ecosystem. Your users will enjoy a frictionless checkout process, while you benefit from the robustness and simplicity of our solution. No more struggling with complex payment integrations – we've got you covered!
 
-🎉 Elevate Your Medusa Store: By sponsoring this plugin, you empower the entire Medusa community, driving innovation and success across the platform.
+By leveraging the Medusa Payment PhonPe plugin, you'll unlock a multitude of benefits:
+
+✅ Simplicity: Seamlessly integrate PhonPe payments into your Medusa-powered eCommerce platform with just a few lines of code. Our user-friendly documentation ensures a hassle-free setup.
+
+✅ Reliability: Trust is the currency of the digital age. With PhonPe's reputation for security and our commitment to excellence, you can rest assured that your users' transactions are in safe hands.
+
+✅ Speed: Time is of the essence. Our plugin ensures swift and efficient payment processing, reducing checkout friction and boosting customer satisfaction.
+
+✅ Flexibility: We understand that no two eCommerce platforms are alike. That's why our plugin is designed to be customizable, allowing you to tailor the payment experience to your unique requirements.
+
+✅ Innovation: Stay ahead of the curve. By offering PhonPe as a payment option, you're tapping into the growing trend of digital payments, meeting your users where they are and setting your platform apart from the competition.
+
+Join the ranks of successful web developers who have already revolutionized their eCommerce platforms with Medusa Payment PhonPe. Together, let's build a future where every transaction is smooth, every customer is satisfied, and every developer has the tools they need to create magic.
+
+Don't miss out on this opportunity to elevate your eCommerce platform to new heights. Embrace the future of payments with Medusa Payment PhonPe – because when it comes to success, every detail matters, and every payment counts! 💡💰
 
 ## Installation Made Simple
 
 No hassle, no fuss! Install Medusa-Payment-PhonePe effortlessly with npm:
 
 ```bash
-npm install medusa-payment-phonepe
+yarn add medusa-payment-phonepe
 
 
 
@@ -28,10 +42,10 @@ This plugin enables the phonepe payment interface on [medusa](https://medusajs.c
 
 ## Installation
 
-Use the package manager npm to install medusa-payment-phonepe.
+Use the package manager yarn to install medusa-payment-phonepe.
 
 ```bash
-npm install medusa-payment-phonepe
+yarn install medusa-payment-phonepe
 ```
 
 ## Usage
@@ -43,6 +57,15 @@ In your environment file (.env) you need to define
 PHONEPE_SALT=<your supplied SALT>
 PHONEPE_MODE=<the mode to run your stack in production,uat,test>
 PHONEPE_MERCHANT_ACCOUNT=<your phonepe account number/merchant id>
+
+enabledDebugLogging?: boolean; - to enable debug logging. Enabling this might coz the vercel function to timeout
+
+redirectUrl: string;  - the URL to redirect the client to
+redirectMode: "REDIRECT" | "POST";
+callbackUrl: string; - the server 2 server callback path
+merchantId: string; - the phonepe merchant id
+salt: string; - the phonpe supplied 
+mode: "production" | "test" | "uat" - the mode to operate in. UAT is to test against the phone gateway, production when you want acutal money to be deducted, test.. well its just that  test mode, mocked to be fully implemented. test are currently run in UAT mode. 
 ```
 You need to add the plugin into your medusa-config.js as shown below
 
@@ -87,6 +110,7 @@ in that add the following code
 /* eslint-disable require-jsdoc */
 import { medusaClient } from "@lib/config";
 import { createPostCheckSumHeader } from "@lib/util/phonepe-create-post-checksum-header";
+import { sleep } from "@lib/util/sleep";
 
 import { notFound } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
@@ -107,68 +131,107 @@ export async function POST(
     const merchantId = data.get("merchantId");
 
     let verificationData = "";
-    const providerReferenceId = data.get("providerReferenceId");
 
     let cartId = merchantTransactionId?.valueOf() as string;
     const cartIdParts = cartId.split("_");
     cartId = `${cartIdParts[0]}_${cartIdParts[1]}`;
-
+    console.log(`computed cart id: ${cartId} `);
     let redirectPath: string | undefined;
     const redirectErrorPath = `/cart`;
 
-    if (code?.valueOf() == PaymentStatusCodeValues.PAYMENT_SUCCESS) {
+    if (
+        code?.valueOf() == PaymentStatusCodeValues.PAYMENT_SUCCESS ||
+        code?.valueOf() == PaymentStatusCodeValues.PAYMENT_INITIATED
+    ) {
         if (!merchantTransactionId?.valueOf() || !merchantId?.valueOf()) {
             notFound();
-        }
-    } else if (code?.valueOf() != PaymentStatusCodeValues.PAYMENT_SUCCESS) {
-        return NextResponse.redirect(`/cart`);
-    } else {
-        data.forEach((value, key) => {
-            if (key != "checksum") verificationData += value;
-        });
+        } else if (code?.valueOf() != PaymentStatusCodeValues.PAYMENT_SUCCESS) {
+            console.log("invalid code", code?.valueOf());
+        } else {
+            data.forEach((value, key) => {
+                if (key != "checksum") verificationData += value;
+            });
 
-        const { checksum } = createPostCheckSumHeader(
-            verificationData,
-            process.env.PHONEPE_SALT,
-            ""
-        );
-
-        if (
-            checksum == receivedChecksum?.valueOf() ||
-            !process.env.TEST_DISABLED
-        ) {
-            if (checksum != receivedChecksum?.valueOf()) {
-                console.warn("running in test mode.. This is dangerous!! ");
-            }
-            
-            let cartResp = await medusaClient.carts.retrieve(cartId);
-
-            cartResp = await medusaClient.carts.updatePaymentSession(
-                cartResp.cart.id,
-                cartResp.cart.payment_session!.provider_id,
-                {
-                    data: {
-                        ...cartResp.cart.payment_session?.data,
-                        merchantTransacionId: merchantTransactionId,
-                        providerReferenceId: providerReferenceId
-                    }
-                }
+            const { checksum } = createPostCheckSumHeader(
+                verificationData,
+                process.env.PHONEPE_SALT,
+                ""
             );
-            // console.log("updated providerReferenceId id in payment session", JSON.stringify(cartResp.cart))
-            try {
-                const authorizedCart = await medusaClient.carts.complete(
-                    cartResp.cart.id
-                );
-                console.log("finalized cart");
-                if (authorizedCart.data.id == cartResp.cart.id) {
-                    console.log("error: " + redirectErrorPath);
+            const checksumReceived = receivedChecksum?.valueOf();
+            console.warn(
+                `checksum computed = ${checksum} & checksum received = ${checksumReceived}`
+            );
+            if (checksum == checksumReceived || !process.env.TEST_DISABLED) {
+                if (checksum != receivedChecksum?.valueOf()) {
+                    console.warn("running in test mode.. This is dangerous!! ");
                 }
-                redirectPath = `/order/confirmed/${authorizedCart.data.id}`;
-                console.log("confirmed: ", redirectPath);
-            } catch (e) {
-                console.log(
-                    "error: " + (e as Error).message + "\n" + JSON.stringify(e)
-                );
+
+                try {
+                    try {
+                        let orderId;
+                        let count = 0;
+                        while (!orderId) {
+                            await sleep(1000);
+                            count++;
+                            try {
+                                const orderCompleted =
+                                    await medusaClient.orders.retrieveByCartId(
+                                        cartId
+                                    );
+
+                                orderId = orderCompleted.order.id;
+                            } catch (e) {
+                                console.log("order not processed in s2s");
+                                if (count > 10) {
+                                    throw new Error(
+                                        "Order not processed by s2s"
+                                    );
+                                }
+                            }
+                        }
+                        redirectPath = `/order/confirmed/${orderId}`;
+                    } catch (e) {
+                        const cartResp = await medusaClient.carts.retrieve(
+                            cartId
+                        );
+                        console.log("order incomplete");
+                        try {
+                            const authorizedCart =
+                                await medusaClient.carts.complete(
+                                    cartResp.cart.id
+                                );
+                            console.log("finalized cart");
+                            if (authorizedCart.data.id == cartResp.cart.id) {
+                                console.log("error: " + redirectErrorPath);
+                            }
+                            redirectPath = `/order/confirmed/${authorizedCart.data.id}`;
+                            console.log("confirmed: ", redirectPath);
+                        } catch (e) {
+                            console.log(
+                                "error: " +
+                                    (e as Error).message +
+                                    "\n" +
+                                    JSON.stringify(e)
+                            );
+                            try {
+                                await medusaClient.carts.refreshPaymentSession(
+                                    cartId,
+                                    cartResp.cart.payment_session!.provider_id
+                                );
+                            } catch (e) {
+                                console.log("unable to remove payment session");
+                                console.log((e as Error).message);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log(
+                        "cart error: " +
+                            (e as Error).message +
+                            "\n" +
+                            JSON.stringify(e)
+                    );
+                }
             }
         }
     }
@@ -176,7 +239,10 @@ export async function POST(
     const computedUrl = `${urlSplit[0]}//${base}${locale ? "/" + locale : ""}${
         redirectPath ?? redirectErrorPath
     }`;
-    console.log("computed URL:" + computedUrl);
+    console.log(
+        "computed URL:" + computedUrl + "\ncartId: " + cartId,
+        "\nmerchant_transaction_id: " + merchantTransactionId
+    );
     return NextResponse.redirect(new URL(computedUrl), 302);
 }
 
@@ -193,11 +259,13 @@ like below
 
 ````
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { medusaClient } from "@lib/config";
 import { PaymentSession } from "@medusajs/medusa";
 import Button from "@modules/common/components/button";
 import Spinner from "@modules/common/icons/spinner";
-import { useCart } from "medusa-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCart, useUpdatePaymentSession } from "medusa-react";
+import { useEffect, useState } from "react";
+import { PaymentResponse } from "types/phonepe-types";
 
 export const PhonePePaymentButton = ({
     session,
@@ -211,9 +279,9 @@ export const PhonePePaymentButton = ({
     const [errorMessage, setErrorMessage] = useState<string | undefined>(
         undefined
     );
+    const { cart, setCart } = useCart();
 
-    const { cart } = useCart();
-
+    const updatePaymentSession = useUpdatePaymentSession(cart!.id);
     useEffect(() => {
         console.log(JSON.stringify(session));
         if (!session && cart?.payment.provider_id == "phonepe") {
@@ -223,31 +291,80 @@ export const PhonePePaymentButton = ({
         }
     }, [session, cart]);
 
-    const handlePayment = useCallback(() => {
-        console.log(session);
+    const handlePayment = async (event: { preventDefault: () => void }) => {
+        event.preventDefault();
+        console.log("this is the current session" + session);
         setSubmitting(true);
         if (!cart) {
             setSubmitting(false);
             return;
         }
-        console.log(
-            ((session.data.data as any).instrumentResponse as any).redirectInfo
-                .url
-        );
-        if (
-            (
-                (session.data.data as any).instrumentResponse as any
-            ).redirectInfo.url.includes("https")
-        ) {
-            window.location.replace(
-                ((session.data.data as any).instrumentResponse as any)
-                    .redirectInfo.url
-            );
-        } else {
-            setErrorMessage("oops didn't get redirection path");
-        }
-    }, [session, cart]);
+        console.log("updating the current session");
+        await updatePaymentSession.mutateAsync({
+            provider_id: session.provider_id,
+            data: { readyToPay: true }
+        });
+        await updatePaymentSession.mutateAsync(
+            {
+                provider_id: session.provider_id,
+                data: { readyToPay: true }
+            },
+            {
+                onSuccess: async ({ cart }, variables, context) => {
+                    console.log(
+                        "checking update successful or not  the current session" +
+                            JSON.stringify(cart) +
+                            " variables: ",
+                        JSON.stringify(variables) + " context :",
+                        JSON.stringify(context)
+                    );
+                    setCart(cart);
+                    const updatedCart = await medusaClient.carts.retrieve(
+                        cart.id
+                    );
+                    console.log(
+                        "updating the current session cart  : " +
+                            JSON.stringify(updatedCart)
+                    );
+                    console.log(
+                        "cart payment session updated:",
+                        JSON.stringify(updatedCart.cart.payment_session)
+                    );
 
+                    console.log(
+                        "refreshing payment session data" +
+                            JSON.stringify(updatedCart.cart.payment_session)
+                    );
+                    const paymentSessionData = updatedCart.cart.payment_session
+                        ?.data as unknown as PaymentResponse;
+                    const redirectUrl =
+                        paymentSessionData?.data?.instrumentResponse
+                            ?.redirectInfo?.url;
+                    console.log(`redirect url: ${redirectUrl}`);
+
+                    if (
+                        redirectUrl?.includes("https") &&
+                        redirectUrl.includes("token=")
+                    ) {
+                        window.location.replace(redirectUrl);
+                    } else {
+                        throw new Error(
+                            "mutation didn't signal, please click checkout again"
+                        );
+                    }
+                },
+                onError: (error, variables, context) => {
+                    console.log("message : " + error.message);
+                    console.log("variables: " + JSON.stringify(variables));
+                    console.log("context: " + JSON.stringify(context));
+                    setErrorMessage(
+                        "error processing request: " + error.message
+                    );
+                    setSubmitting(false);
+                }
+            }
+        );
+    };
     return (
         <>
             <Button
@@ -264,6 +381,7 @@ export const PhonePePaymentButton = ({
         </>
     );
 };
+
     
 ````
 
@@ -315,8 +433,7 @@ Please make sure to update tests as appropriate.
 
 These features exists, but without implementing the client it isn't possible to tests these outright
 
-1. Capture Payment
-2. Refund
+1. Refund
 
 
 ## Disclaimer
@@ -343,5 +460,5 @@ Thank you for your time, and thank you for being an integral part of our Medusa 
 
 With warm regards,
 
-Govind
+SGFGOV
 

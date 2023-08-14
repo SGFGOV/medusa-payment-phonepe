@@ -8,6 +8,12 @@ on:
 jobs:
   unit-test:
     runs-on: ubuntu-latest
+    environment: UAT
+    env:
+      PHONEPE_SALT: ${{vars.PHONEPE_SALT}}
+      PHONEPE_MERCHANT_ACCOUNT: ${{vars.PHONEPE_MERCHANT_ACCOUNT}} #FOR UAT TESTING MERCHANTUAT
+      DISABLE_MOCKS: "true"
+      PHONEPE_MODE: "uat"
     strategy:
       matrix:
         node-verion: [16.x]

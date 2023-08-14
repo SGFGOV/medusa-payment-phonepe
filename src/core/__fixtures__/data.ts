@@ -20,6 +20,7 @@ export const initiatePaymentContextWithExistingCustomer: PaymentProcessorContext
     customer: { phone: "9999999999", id: "thisIsATestUser" } as any,
     context: {},
     paymentSessionData: {
+      readyToPay: true,
       merchantTransactionId: "test" + Math.round(Math.random() * 1e10),
       redirectUrl: `https://localhost:8000/order/${
         "test" + Math.round(Math.random() * 1e10)
@@ -147,6 +148,7 @@ export const updatePaymentContextWithExistingCustomer = {
   customer: {},
   context: {},
   paymentSessionData: {
+    readyToPay: true,
     customer: "test",
     amount: 1000,
   },
@@ -164,6 +166,7 @@ export const updatePaymentContextWithExistingCustomerPhonePeId = {
   },
   context: {},
   paymentSessionData: {
+    readyToPay: true,
     customer: "test",
     amount: 1000,
   },
@@ -177,6 +180,7 @@ export const updatePaymentContextWithWrongEmail = {
   customer: {},
   context: {},
   paymentSessionData: {
+    readyToPay: true,
     customer: "test",
     amount: 1000,
   },
@@ -190,6 +194,7 @@ export const updatePaymentContextWithDifferentAmount = {
   customer: { phone: "9999999999", id: "thisIsATestUser" } as any,
   context: {},
   paymentSessionData: {
+    readyToPay: true,
     merchantTransactionId: "test" + Math.round(Math.random() * 1e10),
     redirectUrl: `https://localhost:8000/order/${
       "test" + Math.round(Math.random() * 1e10)

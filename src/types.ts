@@ -1,7 +1,7 @@
 import { PaymentProcessorError, PaymentStatus } from "@medusajs/medusa";
 
 export interface PhonePeOptions {
-  stepsToWaitBeforeFire?: number;
+  enabledDebugLogging?: boolean;
   redirectUrl: string;
   redirectMode: "REDIRECT" | "POST";
   callbackUrl: string;
@@ -78,7 +78,7 @@ export interface PaymentResponseUPI {
 export interface PaymentResponseData {
   merchantId: string;
   merchantTransactionId: string;
-  instrumentResponse: InstrumentResponse;
+  instrumentResponse?: InstrumentResponse;
   customer: { id: string };
 }
 

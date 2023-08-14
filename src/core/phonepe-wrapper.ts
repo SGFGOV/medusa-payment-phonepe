@@ -58,9 +58,7 @@ export class PhonePeWrapper {
     payload: PaymentRequestUPI | PaymentRequestUPICollect | PaymentRequestUPIQr,
 
     apiNewEndpoint?: string
-  ): Promise<
-    PaymentResponse | PaymentCheckStatusResponse | PaymentProcessorError
-  > {
+  ): Promise<PaymentResponse | PaymentProcessorError> {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v1/pay";
     const url =
       /* this.options.mode == "uat"
@@ -257,11 +255,11 @@ export class PhonePeWrapper {
   }
   validateWebhook(data: string, signature: string, salt: string): boolean {
     const { checksum } = verifyPostCheckSumHeader(data, salt, "");
-    this.logger.info(
+    this.logger.debug(
       `verifying checksum received: ${signature}, computed: ${checksum} `
     );
     if (checksum == signature) {
-      this.logger.debug("checksum valid checksum");
+      this.logger.info("checksum valid checksum");
       return true;
     }
     return false;
