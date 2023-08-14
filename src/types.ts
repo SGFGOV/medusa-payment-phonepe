@@ -1,7 +1,7 @@
 import { PaymentProcessorError, PaymentStatus } from "@medusajs/medusa";
 
 export interface PhonePeOptions {
-  stepsToWaitBeforeFire?: number;
+  enabledDebugLogging?: boolean;
   redirectUrl: string;
   redirectMode: "REDIRECT" | "POST";
   callbackUrl: string;

@@ -121,9 +121,11 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
           currentMerchantTransactionId
         )) as PaymentCheckStatusResponse;
       // const data = paymentStatusResponse as PaymentCheckStatusResponse;
-      this.logger.info(
-        `response from phonepe: ${JSON.stringify(paymentStatusResponse)}`
-      );
+      if (this.options_.enabledDebugLogging) {
+        this.logger.debug(
+          `response from phonepe: ${JSON.stringify(paymentStatusResponse)}`
+        );
+      }
       switch (paymentStatusResponse.code) {
         case "PAYMENT_PENDING":
           return PaymentSessionStatus.PENDING;
@@ -186,7 +188,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
           request as PaymentRequest
         );
       }
-      this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
+      if (this.options_.enabledDebugLogging) {
+        this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
+      }
       const result: PaymentProcessorSessionResponse = {
         session_data: {
           ...response,
@@ -377,7 +381,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       const response = await this.phonepe_.postRefundRequestToPhonePe(
         refundRequest
       );
-      // this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
+      if (this.options_.enabledDebugLogging) {
+        this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
+      }
       return response;
     } catch (e) {
       this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
@@ -398,7 +404,9 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         request.merchantId,
         request.merchantTransactionId
       );
-      // this.logger.info(`response from phonepe: ${JSON.stringify(intent)}`);
+      if (this.options_.enabledDebugLogging) {
+        this.logger.info(`response from phonepe: ${JSON.stringify(intent)}`);
+      }
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (e) {
       this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
