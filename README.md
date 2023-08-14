@@ -57,6 +57,15 @@ In your environment file (.env) you need to define
 PHONEPE_SALT=<your supplied SALT>
 PHONEPE_MODE=<the mode to run your stack in production,uat,test>
 PHONEPE_MERCHANT_ACCOUNT=<your phonepe account number/merchant id>
+
+enabledDebugLogging?: boolean; - to enable debug logging. Enabling this might coz the vercel function to timeout
+
+redirectUrl: string;  - the URL to redirect the client to
+redirectMode: "REDIRECT" | "POST";
+callbackUrl: string; - the server 2 server callback path
+merchantId: string; - the phonepe merchant id
+salt: string; - the phonpe supplied 
+mode: "production" | "test" | "uat" - the mode to operate in. UAT is to test against the phone gateway, production when you want acutal money to be deducted, test.. well its just that  test mode, mocked to be fully implemented. test are currently run in UAT mode. 
 ```
 You need to add the plugin into your medusa-config.js as shown below
 
