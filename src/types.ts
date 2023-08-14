@@ -78,7 +78,7 @@ export interface PaymentResponseUPI {
 export interface PaymentResponseData {
   merchantId: string;
   merchantTransactionId: string;
-  instrumentResponse: InstrumentResponse;
+  instrumentResponse?: InstrumentResponse;
   customer: { id: string };
 }
 

@@ -58,9 +58,7 @@ export class PhonePeWrapper {
     payload: PaymentRequestUPI | PaymentRequestUPICollect | PaymentRequestUPIQr,
 
     apiNewEndpoint?: string
-  ): Promise<
-    PaymentResponse | PaymentCheckStatusResponse | PaymentProcessorError
-  > {
+  ): Promise<PaymentResponse | PaymentProcessorError> {
     const apiEndpoint = apiNewEndpoint ?? "/pg/v1/pay";
     const url =
       /* this.options.mode == "uat"

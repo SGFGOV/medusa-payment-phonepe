@@ -33,6 +33,7 @@ import {
   PaymentRequest,
   PaymentResponse,
   PaymentResponseData,
+  PaymentResponseUPI,
   PaymentStatusCodeValues,
   PhonePeEvent,
   PhonePeOptions,
@@ -170,10 +171,21 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         context
       )}`
     );
+
     try {
-      const response = await this.phonepe_.postPaymentRequestToPhonePe(
-        request as PaymentRequest
+      let response;
+      this.logger.info(
+        "payment session data: " + JSON.stringify(paymentSessionData)
       );
+      if (paymentSessionData.readyToPay) {
+        response = await this.phonepe_.postPaymentRequestToPhonePe(
+          request as PaymentRequest
+        );
+      } else {
+        response = await this.intermediatePaymentResponse(
+          request as PaymentRequest
+        );
+      }
       this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
       const result: PaymentProcessorSessionResponse = {
         session_data: {
@@ -193,6 +205,24 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       const e = error as Error;
       return this.buildError("initialization error", e);
     }
+  }
+  async intermediatePaymentResponse(
+    request: PaymentRequest
+  ): Promise<PaymentResponse> {
+    const dummyResponse: PaymentResponseUPI = {
+      success: false,
+      code: PaymentStatusCodeValues.PAYMENT_INITIATED,
+      message: "initiating payment",
+      data: {
+        merchantId: request.merchantId,
+        merchantTransactionId: request.merchantTransactionId,
+        instrumentResponse: undefined,
+        customer: {
+          id: request.merchantUserId,
+        },
+      },
+    };
+    return dummyResponse;
   }
 
   async authorizePayment(
@@ -301,7 +331,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       const intent = await this.phonepe_.capture(
         paymentSessionData.data as PaymentResponseData
       );
-      this.logger.info(`result of capture : ${JSON.stringify(intent)}`);
+      // this.logger.info(`result of capture : ${JSON.stringify(intent)}`);
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (error) {
       if (error.code === ErrorCodes.PAYMENT_INTENT_UNEXPECTED_STATE) {
@@ -347,7 +377,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       const response = await this.phonepe_.postRefundRequestToPhonePe(
         refundRequest
       );
-      this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
+      // this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
       return response;
     } catch (e) {
       this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
@@ -368,7 +398,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         request.merchantId,
         request.merchantTransactionId
       );
-      this.logger.info(`response from phonepe: ${JSON.stringify(intent)}`);
+      // this.logger.info(`response from phonepe: ${JSON.stringify(intent)}`);
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (e) {
       this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);

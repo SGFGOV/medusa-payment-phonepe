@@ -89,7 +89,7 @@ export async function handlePaymentHook({
   paymentIntent: PhonePeS2SResponse;
 }): Promise<{ statusCode: number }> {
   const logger = container.resolve("logger") as Logger;
-  logger.info("Data received: " + JSON.stringify(paymentIntent));
+  // logger.info("Data received: " + JSON.stringify(paymentIntent));
 
   let cartId = paymentIntent.data.merchantTransactionId; // Backward compatibility
 
@@ -195,7 +195,7 @@ async function capturePaymenCollectiontIfNecessary({
     .catch(() => undefined)) as PaymentCollection;
 
   if (paycol?.payments?.length) {
-    logger.info(`attempting to collect payment ${JSON.stringify(paycol)}`);
+    // logger.info(`attempting to collect payment ${JSON.stringify(paycol)}`);
     logger.info(
       `attempting to collect payment of ${paymentIntent.merchantTransacionId}`
     );
@@ -279,7 +279,7 @@ async function completeCartIfNecessary({
     const cart = await cartService
       .withTransaction(transactionManager)
       .retrieve(cartId, { select: ["context"] });
-    logger.info(`cart retrieved ${JSON.stringify(cart)}`);
+    // logger.info(`cart retrieved ${JSON.stringify(cart)}`);
     const { response_code, response_body } = await completionStrat
       .withTransaction(transactionManager)
       .complete(cartId, idempotencyKey, { ip: cart.context?.ip as string });
