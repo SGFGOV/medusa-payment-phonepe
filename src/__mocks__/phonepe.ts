@@ -21,6 +21,7 @@ dotenv.config();
 const mockEnabled = process.env.DISABLE_MOCKS == "true" ? false : true;
 
 export function isMocksEnabled(): boolean {
+  console.log(JSON.stringify(process.env))
   if (mockEnabled) {
     console.log("using mocks");
   }
