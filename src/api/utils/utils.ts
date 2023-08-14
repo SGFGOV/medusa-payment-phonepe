@@ -283,11 +283,11 @@ async function completeCartIfNecessary({
     const { response_code, response_body } = await completionStrat
       .withTransaction(transactionManager)
       .complete(cartId, idempotencyKey, { ip: cart.context?.ip as string });
-    logger.info(
+    /* logger.info(
       `cart completed status: ${response_code} body: ${JSON.stringify(
         response_body
       )}`
-    );
+    );*/
     if (response_code !== 200) {
       throw new MedusaError(
         MedusaError.Types.UNEXPECTED_STATE,

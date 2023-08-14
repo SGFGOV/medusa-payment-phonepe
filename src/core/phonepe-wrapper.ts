@@ -255,11 +255,11 @@ export class PhonePeWrapper {
   }
   validateWebhook(data: string, signature: string, salt: string): boolean {
     const { checksum } = verifyPostCheckSumHeader(data, salt, "");
-    this.logger.info(
+    this.logger.debug(
       `verifying checksum received: ${signature}, computed: ${checksum} `
     );
     if (checksum == signature) {
-      this.logger.debug("checksum valid checksum");
+      this.logger.info("checksum valid checksum");
       return true;
     }
     return false;
