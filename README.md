@@ -35,7 +35,7 @@ No hassle, no fuss! Install Medusa-Payment-PhonePe effortlessly with npm:
 ```bash
 yarn add medusa-payment-phonepe
 
-
+```
 
 [PHONEPE](https://phonepe.com) an immensely popular payment gateway with a host of features. 
 This plugin enables the phonepe payment interface on [medusa](https://medusajs.com) commerce stack
