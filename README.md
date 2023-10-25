@@ -96,11 +96,7 @@ you can replace http://localhost:9000 with your http(s)://your-server-hook
 
 For the nextjs start you need to  make the following changes 
 
-1. Install package to your next starter. This just makes it easier, importing all the scripts implicitly
-```
-
-```
-2. Create a route to handle post requests from phone pe by creating a route under
+1. Create a route to handle post requests from phone pe by creating a route under
   /app/api/payment-confirmed/route.ts
 
 in that add the following code 
@@ -251,7 +247,7 @@ export default POST;
 
 ```
 
-##### additional dependencies for browser
+##### 2. additional dependencies for browser
 
 
 ```
@@ -260,7 +256,7 @@ yarn add crypto-js
 
 ```
 
-##### lib functions
+##### 3. lib functions
 ###### sleep
 ```
 export const sleep = async (milliseconds: number): Promise<void> => {
@@ -290,7 +286,7 @@ export function createPostCheckSumHeader(
 
 ```
 
-3. Create a button for PhonePe <next-starter>/src/modules/checkout/components/payment-button/phonepe-payment-button.tsx
+2. Create a button for PhonePe <next-starter>/src/modules/checkout/components/payment-button/phonepe-payment-button.tsx
 
 like below
 
