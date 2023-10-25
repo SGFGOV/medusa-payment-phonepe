@@ -251,6 +251,45 @@ export default POST;
 
 ```
 
+##### additional dependencies for browser
+
+
+```
+
+yarn add crypto-js
+
+```
+
+##### lib functions
+###### sleep
+```
+export const sleep = async (milliseconds: number): Promise<void> => {
+    await new Promise((resolve) => {
+        return setTimeout(resolve, milliseconds);
+    });
+};
+```
+
+###### phonepe-create-post-checksum-header
+```
+
+import sha256 from "crypto-js/sha256";
+export function createPostCheckSumHeader(
+    payload: any,
+    salt?: string,
+    apiString?: string
+) {
+    const SALT_KEY = salt ?? "test-salt";
+    const payloadWithSalt = payload + `${apiString ?? ""}${SALT_KEY}`;
+    const encodedPayload = sha256(payloadWithSalt).toString();
+    const checksum = `${encodedPayload}###1`;
+    return { checksum, encodedBody: payload };
+}
+
+
+
+```
+
 3. Create a button for PhonePe <next-starter>/src/modules/checkout/components/payment-button/phonepe-payment-button.tsx
 
 like below
