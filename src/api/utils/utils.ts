@@ -25,6 +25,7 @@ import {
   PhonePeS2SResponse,
   PaymentStatusCodeValues,
   PhonePeS2SResponseData,
+  HealthRequest,
 } from "../../types";
 import PhonePeProviderService from "../../services/phonepe-provider";
 
@@ -338,6 +339,13 @@ export function createPostRefundChecksumHeader(
   salt?: string
 ) {
   return createPostCheckSumHeader(payload, salt, "/pg/v1/refund");
+}
+
+export function createHealthChecksumHeader(
+  payload: HealthRequest,
+  salt?: string
+) {
+  return createPostCheckSumHeader(payload, salt, `/v1/pg/merchants/${payload.merchantId}/health`);
 }
 
 export function createPostValidateVpaChecksumHeader(

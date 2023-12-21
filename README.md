@@ -778,7 +778,11 @@ case "phonepe":
         return <></>
 ```
  
+###UAT CREDENTIALS - ONLY FOR TESTING
 
+PHONEPE_SALT=099eb0cd-02cf-4e2a-8aca-3e6c6aff0399
+PHONEPE_MERCHANT_ACCOUNT=MERCHANTUAT #FOR UAT TESTING MERCHANTUAT
+PHONEPE_MODE=uat #FOR testing
 
 ## Contributing
 
