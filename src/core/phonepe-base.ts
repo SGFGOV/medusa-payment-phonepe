@@ -23,6 +23,7 @@ import {
   PaymentProcessorSessionResponse,
   PaymentSessionStatus,
   Logger,
+  EventBusService
 } from "@medusajs/medusa";
 import {
   ErrorCodes,
@@ -57,10 +58,12 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   protected phonepe_: PhonePeWrapper;
   protected logger: Logger;
   static sequenceCount = 0;
-  protected constructor(container: { logger: Logger }, options) {
+  eventbusService: EventBusService;
+  protected constructor(container: { logger: Logger,eventbusSerivice:EventBusService }, options) {
     super(container as any, options);
     this.logger = container.logger;
     this.options_ = options;
+    this.eventbusService = container.eventbusSerivice;
 
     this.init();
   }
@@ -202,7 +205,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
           },
         },
       };
-
+      await this.eventbusService.emit([{eventName:"phonepe.payment_initialized",data:{...result}}])
       return result;
     } catch (error) {
       this.logger.error(`error from phonepe: ${JSON.stringify(error)}`);
@@ -248,6 +251,8 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         merchantId,
         merchantTransactionId,
       });
+      await this.eventbusService.emit([{eventName:"phonepe.payment_authorized",data:{status}}])
+      
       return { data: paymentSessionData, status };
     } catch (e) {
       const error: PaymentProcessorError = {
@@ -314,9 +319,12 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
   > {
     try {
       const id = paymentSessionData.id as string;
+      await this.eventbusService.emit([{eventName:"phonepe.payment_cancelled",data:{...paymentSessionData}}])
+     
       return (await this.phonepe_.cancel(
         paymentSessionData
       )) as unknown as PaymentProcessorSessionResponse["session_data"];
+      
     } catch (e) {
       if (e.payment_intent?.status === ErrorIntentStatus.CANCELED) {
         return e.payment_intent;
@@ -336,6 +344,7 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
         paymentSessionData.data as PaymentResponseData
       );
       // this.logger.info(`result of capture : ${JSON.stringify(intent)}`);
+      await this.eventbusService.emit([{eventName:"phonepe.payment_captured",data:{...paymentSessionData}}])
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (error) {
       if (error.code === ErrorCodes.PAYMENT_INTENT_UNEXPECTED_STATE) {
@@ -384,6 +393,8 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       if (this.options_.enabledDebugLogging) {
         this.logger.info(`response from phonepe: ${JSON.stringify(response)}`);
       }
+      await this.eventbusService.emit([{eventName:"phonepe.payment_captured",data:{...response}}])
+      
       return response;
     } catch (e) {
       this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
@@ -407,6 +418,8 @@ abstract class PhonePeBase extends AbstractPaymentProcessor {
       if (this.options_.enabledDebugLogging) {
         this.logger.info(`response from phonepe: ${JSON.stringify(intent)}`);
       }
+      await this.eventbusService.emit([{eventName:"phonepe.payment_captured",data:{...intent}}])
+      
       return intent as unknown as PaymentProcessorSessionResponse["session_data"];
     } catch (e) {
       this.logger.error(`response from phonepe: ${JSON.stringify(e)}`);
