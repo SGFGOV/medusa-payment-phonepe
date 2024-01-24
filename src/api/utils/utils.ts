@@ -1,6 +1,7 @@
 import {
   AbstractCartCompletionStrategy,
   CartService,
+  EventBusService,
   IdempotencyKeyService,
   Logger,
   OrderService,
@@ -25,6 +26,7 @@ import {
   PhonePeS2SResponse,
   PaymentStatusCodeValues,
   PhonePeS2SResponseData,
+  HealthRequest,
 } from "../../types";
 import PhonePeProviderService from "../../services/phonepe-provider";
 
@@ -90,6 +92,9 @@ export async function handlePaymentHook({
 }): Promise<{ statusCode: number }> {
   const logger = container.resolve("logger") as Logger;
   // logger.info("Data received: " + JSON.stringify(paymentIntent));
+  const eventBusSerivice = container.resolve(
+    "eventBusSerivice"
+  ) as EventBusService;
 
   let cartId = paymentIntent.data.merchantTransactionId; // Backward compatibility
 
@@ -101,14 +106,21 @@ export async function handlePaymentHook({
   switch (event.type) {
     case PaymentStatusCodeValues.PAYMENT_SUCCESS:
       try {
-        await onPaymentIntentSucceeded({
+        const sucessPaymentParams = {
           eventId: event.id,
           paymentIntent,
           cartId,
           resourceId,
           isPaymentCollection: isPaymentCollection(resourceId),
           container,
-        });
+        };
+        await onPaymentIntentSucceeded(sucessPaymentParams);
+        await eventBusSerivice.emit([
+          {
+            eventName: "phonepe.hook.payment_success",
+            data: { ...paymentIntent, cartId, resourceId },
+          },
+        ]);
       } catch (err) {
         const message = buildError(event.type, err);
         logger.error(message);
@@ -123,6 +135,12 @@ export async function handlePaymentHook({
         "The payment of the payment intent " +
           `${paymentIntent.data.merchantTransactionId} has failed${EOL}${message}`
       );
+      await eventBusSerivice.emit([
+        {
+          eventName: "phonepe.hook.failed",
+          data: { ...paymentIntent },
+        },
+      ]);
       break;
     }
     default:
@@ -338,6 +356,17 @@ export function createPostRefundChecksumHeader(
   salt?: string
 ) {
   return createPostCheckSumHeader(payload, salt, "/pg/v1/refund");
+}
+
+export function createHealthChecksumHeader(
+  payload: HealthRequest,
+  salt?: string
+) {
+  return createPostCheckSumHeader(
+    payload,
+    salt,
+    `/v1/pg/merchants/${payload.merchantId}/health`
+  );
 }
 
 export function createPostValidateVpaChecksumHeader(

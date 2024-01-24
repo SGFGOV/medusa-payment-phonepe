@@ -197,6 +197,11 @@ export interface RefundRequest {
   callbackUrl: string;
 }
 
+export interface HealthRequest {
+  merchantId: string;
+}
+
+
 export interface RefundResponse {
   success: boolean;
   code: PaymentStatusCodeValues;

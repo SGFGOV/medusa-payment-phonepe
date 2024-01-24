@@ -4,6 +4,7 @@ import {
   buildError,
   createGetChecksumHeader,
   createGetChecksumTransactionHeader,
+  createHealthChecksumHeader,
   createPostCheckSumHeader,
   createPostPaymentChecksumHeader,
   createPostRefundChecksumHeader,
@@ -11,6 +12,7 @@ import {
   verifyPostCheckSumHeader,
 } from "../api/utils/utils";
 import {
+  HealthRequest,
   PaymentCheckStatusResponse,
   PaymentRequest,
   PaymentRequestUPI,
@@ -30,7 +32,7 @@ import {
   PaymentProcessorError,
   PaymentSessionData,
 } from "@medusajs/medusa";
-import { QueryResult } from "typeorm";
+
 
 export class PhonePeWrapper {
   options: PhonePeOptions;
@@ -264,4 +266,30 @@ export class PhonePeWrapper {
     }
     return false;
   }
+  async healthCheck(
+    payload: HealthRequest,
+
+    apiNewEndpoint?: string
+  ): Promise<any> {
+    const apiEndpoint = apiNewEndpoint ?? `/v1/pg/merchants/${payload.merchantId}/health`;
+    const url = this.url;
+    const encodedMessage = await createHealthChecksumHeader(payload);
+    const headers = {
+      "Content-Type": "application/json",
+      accept: "application/json",
+      "X-VERIFY": encodedMessage.checksum,
+    };
+
+    const result = await axios.post(
+      `${url}${apiEndpoint}`,
+      { request: encodedMessage.encodedBody },
+      {
+        headers,
+      }
+    );
+    return result.data;
+  }
+  
 }
+
+
