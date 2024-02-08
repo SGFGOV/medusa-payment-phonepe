@@ -232,9 +232,10 @@ export async function POST(
         }
     }
     const locale = request.nextUrl.locale ?? "en";
-    const computedUrl = `${urlSplit[0]}//${base}${locale ? "/" + locale : ""}${
-        redirectPath ?? redirectErrorPath
-    }`;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${urlSplit[0]}//${base}`
+    const computedUrl = `${baseUrl}${locale ? "/" + locale : ""}${
+      redirectPath ?? redirectErrorPath
+    }`
     console.log(
         "computed URL:" + computedUrl + "\ncartId: " + cartId,
         "\nmerchant_transaction_id: " + merchantTransactionId
